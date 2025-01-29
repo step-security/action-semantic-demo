@@ -7,7 +7,7 @@ on:
 
 jobs:
   audit-fix:
-    uses: step-security/reusable-workflows/.github/workflows/npm_audit_fix.yml@fix_Audit-Fix-Workflow
+    uses: step-security/reusable-workflows/.github/workflows/yarm_audit_fix.yml@fix_Audit-Fix-Workflow
     with:
       base_branch: "main"
       pr_title: "fix: Security updates via npm audit fix"
