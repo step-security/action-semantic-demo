@@ -1,0 +1,17 @@
+name: Yarn Audit Fix Run
+
+on:
+  workflow_dispatch:  
+  schedule:
+    - cron: "0 0 * * 1"  
+
+jobs:
+  audit-fix:
+    uses: step-security/reusable-workflows/.github/workflows/npm_audit_fix.yml@fix_Audit-Fix-Workflow
+    with:
+      base_branch: "main"
+      pr_title: "fix: Security updates via npm audit fix"
+      pr_body: "Automatically updating dependencies to resolve vulnerabilities."
+    permissions:
+      contents: write
+      pull-requests: write
