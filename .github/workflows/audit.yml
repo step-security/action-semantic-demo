@@ -6,7 +6,6 @@ on:
       base_branch:
         description: "Specify a base branch"
         required: false
-        type: string
         default: "main"
 
 jobs:
