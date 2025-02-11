@@ -15,7 +15,6 @@ on:
         description: "Specify the npm script to run"
         required: false
         type: string
-        default: "npm run build"
 
 jobs:
   audit-fix:
