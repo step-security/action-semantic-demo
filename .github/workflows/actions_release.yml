@@ -20,8 +20,7 @@ jobs:
       actions: read
       id-token: write
       contents: write
-      packages: read
-    uses: step-security/reusable-workflows/.github/workflows/actions_release_auth.yaml@fix_Build-As-Per-Input
+    uses: step-security/reusable-workflows/.github/workflows/actions_release.yaml@fix_Build-As-Per-Input
     with:
       tag: "${{ github.event.inputs.tag }}"
       script: "${{ github.event.inputs.script }}"
