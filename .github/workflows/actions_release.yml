@@ -6,6 +6,11 @@ on:
       tag:
         description: "Tag for the release"
         required: true
+      script:
+        description: "Specify the build script to run"
+        required: true
+        type: string
+        default: "yarn run build"
 
 permissions:
   contents: read
