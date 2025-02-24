@@ -4,23 +4,20 @@ on:
   workflow_dispatch:
     inputs:
       package_manager:
-        description: "Specify the package manager (npm or yarn)"
-        required: true
+        required: false
+        default: "npm"
       force:
-        description: "Use --force flag for npm audit fix?"
         required: false
         type: boolean
       base_branch:
-        description: "Specify a base branch"
-        required: true
+        required: false
         default: "main"
       use_private_packages:
-        description: "Use private packages?"
         required: false
         type: boolean
       script:
-        description: "Specify the npm/yarn script to run"
-        required: true
+        required: false
+        default: "npm run all"
 
 permissions:
   contents: write
@@ -29,7 +26,7 @@ permissions:
 
 jobs:
   audit-fix:
-    uses: step-security/reusable-workflows/.github/workflows/audit_fix.yml@fix_Cron-Behavior-For-Audit-Fix
+    uses: step-security/reusable-workflows/.github/workflows/audit_fix.yml@v1
     with:
       package_manager: ${{ inputs.package_manager }}
       force: ${{ inputs.force }}
