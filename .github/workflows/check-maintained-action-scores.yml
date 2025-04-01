@@ -28,8 +28,8 @@ jobs:
             const postData = JSON.stringify({ name });
 
             const options = {
-              hostname: 'app.stepsecurity.io',
-              path: '/api/private/github/actions/action-details',
+              hostname: 'agent.api.stepsecurity.io',
+              path: '/v1/github/actions/action-details',
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
