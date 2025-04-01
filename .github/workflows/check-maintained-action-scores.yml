@@ -79,14 +79,13 @@ jobs:
                 const result = await fetchActionDetails(name);
                 const score = result.score?.score ?? 0;
                 const vulnScore = result.score?.["vulnerabilities-score"] ?? 10;
-                const vulnDetails = result.score?.["vulnerabilities-details"] ?? [];
 
                 if (score < 10) {
                   lowScoreActions.push({ name, score });
                 }
 
                 if (vulnScore < 10) {
-                  vulnerableActions.push({ name, vulnScore, vulnDetails });
+                  vulnerableActions.push({ name, vulnScore });
                 }
 
               } catch (err) {
@@ -124,8 +123,6 @@ jobs:
               jq -r '.[] | "- \(.name): vulnerabilities-score = \(.vulnScore) → https://app.stepsecurity.io/action-advisor/\(.name)"' vulnerable-actions.json
 
               echo ""
-              echo "🛡️  Vulnerability details:"
-              jq -r '.[] | select(.vulnDetails | length > 0) | "  \(.name):\n" + (.vulnDetails[] | "    - \(.)")' vulnerable-actions.json
               exit 1
             else
               echo "✅ No vulnerabilities found in maintained actions"
