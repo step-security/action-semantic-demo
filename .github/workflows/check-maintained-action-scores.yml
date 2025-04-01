@@ -64,7 +64,7 @@ jobs:
           async function main() {
             const filePath = path.join('src', 'lib', 'fixtures', 'app-values.ts');
             const content = fs.readFileSync(filePath, 'utf8');
-            const match = content.match(/export const MAINTAINED_ACTIONS\s*=\s*(\[\s*{[\s\S]*?}\s*])\s*as const;/);
+            const match = content.match(/export const MAINTAINED_ACTIONS\s*=\s*(\[[\s\S]*?\])\s*as const;/);
             if (!match) {
               console.error('❌ Could not extract MAINTAINED_ACTIONS from app-values.ts');
               process.exit(1);
