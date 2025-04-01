@@ -25,13 +25,13 @@ jobs:
         with:
           node-version: "20"
 
-      - name: Fetch scores and write low-score actions
+      - name: Fetch scores and write results
         run: |
           cat << 'EOF' > check-scores.js
           const fs = require('fs');
           const path = require('path');
           const https = require('https');
-          function fetchScore(name) {
+          function fetchActionDetails(name) {
             const postData = JSON.stringify({ name });
             const options = {
               hostname: 'agent.api.stepsecurity.io',
@@ -50,7 +50,7 @@ jobs:
                 res.on('end', () => {
                   try {
                     const json = JSON.parse(data);
-                    resolve(json.score?.score ?? 0);
+                    resolve(json);
                   } catch (err) {
                     reject(new Error(`Invalid JSON for ${name}: ${err.message}`));
                   }
@@ -71,19 +71,31 @@ jobs:
             }
             const actions = eval(match[1]); // Trusted input
             const lowScoreActions = [];
+            const vulnerableActions = [];
+
             for (const action of actions) {
               const name = action.name;
               try {
-                const score = await fetchScore(name);
+                const result = await fetchActionDetails(name);
+                const score = result.score?.score ?? 0;
+                const vulnScore = result.score?.["vulnerabilities-score"] ?? 10;
+                const vulnDetails = result.score?.["vulnerabilities-details"] ?? [];
+
                 if (score < 10) {
                   lowScoreActions.push({ name, score });
                 }
+
+                if (vulnScore < 10) {
+                  vulnerableActions.push({ name, vulnScore, vulnDetails });
+                }
+
               } catch (err) {
-                console.error(`❌ Error fetching score for ${name}: ${err.message}`);
+                console.error(`❌ Error fetching details for ${name}: ${err.message}`);
                 process.exit(1);
               }
             }
             fs.writeFileSync('low-score-actions.json', JSON.stringify(lowScoreActions, null, 2));
+            fs.writeFileSync('vulnerable-actions.json', JSON.stringify(vulnerableActions, null, 2));
           }
           main();
           EOF
@@ -100,6 +112,24 @@ jobs:
               echo "✅ All maintained actions have score >= 10"
             fi
           else
-            echo "⚠️ Score results not found"
-            exit 1
+            echo "ℹ️ low-score-actions.json not found — assuming no actions evaluated."
+          fi
+
+      - name: Print and fail if any vulnerabilities detected
+        run: |
+          if [ -f vulnerable-actions.json ]; then
+            count=$(jq 'length' vulnerable-actions.json)
+            if [ "$count" -gt 0 ]; then
+              echo "🚨 Maintained actions with vulnerabilities (vulnerabilities-score < 10):"
+              jq -r '.[] | "- \(.name): vulnerabilities-score = \(.vulnScore) → https://app.stepsecurity.io/action-advisor/\(.name)"' vulnerable-actions.json
+
+              echo ""
+              echo "🛡️  Vulnerability details:"
+              jq -r '.[] | select(.vulnDetails | length > 0) | "  \(.name):\n" + (.vulnDetails[] | "    - \(.)")' vulnerable-actions.json
+              exit 1
+            else
+              echo "✅ No vulnerabilities found in maintained actions"
+            fi
+          else
+            echo "ℹ️ vulnerable-actions.json not found — assuming no actions evaluated."
           fi
