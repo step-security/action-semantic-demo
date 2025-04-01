@@ -1,0 +1,101 @@
+name: Check Maintained Action Scores
+
+on:
+  schedule:
+    - cron: '0 0 * * *'  # daily at midnight UTC
+  workflow_dispatch:
+
+jobs:
+  score-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Check Maintained Action Scores
+        run: |
+          cat << 'EOF' > check-scores.js
+          const fs = require('fs');
+          const path = require('path');
+          const https = require('https');
+
+          function fetchScore(name) {
+            const postData = JSON.stringify({ name });
+
+            const options = {
+              hostname: 'app.stepsecurity.io',
+              path: '/api/private/github/actions/action-details',
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Content-Length': Buffer.byteLength(postData),
+                'x-beta': '1'
+              }
+            };
+
+            return new Promise((resolve, reject) => {
+              const req = https.request(options, res => {
+                let data = '';
+                res.on('data', chunk => data += chunk);
+                res.on('end', () => {
+                  try {
+                    const json = JSON.parse(data);
+                    resolve(json.score?.score ?? 0);
+                  } catch (err) {
+                    reject(new Error(`Invalid JSON for ${name}: ${err.message}`));
+                  }
+                });
+              });
+
+              req.on('error', reject);
+              req.write(postData);
+              req.end();
+            });
+          }
+
+          async function main() {
+            const filePath = path.join('src', 'lib', 'fixtures', 'app-values.ts');
+            const content = fs.readFileSync(filePath, 'utf8');
+            const match = content.match(/export const MAINTAINED_ACTIONS\\s*=\\s*(\\[.*?\\])\\s*as const;/s);
+
+            if (!match) {
+              console.error('❌ Could not extract MAINTAINED_ACTIONS from app-values.ts');
+              process.exit(1);
+            }
+
+            const actions = eval(match[1]); // Trusted input
+            const lowScoreActions = [];
+
+            for (const action of actions) {
+              const name = action.name;
+              try {
+                const score = await fetchScore(name);
+                if (score < 10) {
+                  lowScoreActions.push({ name, score });
+                }
+              } catch (err) {
+                console.error(`❌ Error fetching score for ${name}: ${err.message}`);
+                process.exit(1);
+              }
+            }
+
+            if (lowScoreActions.length > 0) {
+              console.error('❌ The following maintained actions have score < 10:');
+              lowScoreActions.forEach(({ name, score }) => {
+                console.error(`- ${name}: ${score}`);
+              });
+              process.exit(1);
+            } else {
+              console.log('✅ All maintained actions have score >= 10');
+            }
+          }
+
+          main();
+          EOF
+
+          node check-scores.js
