@@ -10,14 +10,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '20'
 
-      - name: Check Maintained Action Scores
+      - name: Fetch scores and write low-score actions
         run: |
           cat << 'EOF' > check-scores.js
           const fs = require('fs');
@@ -84,18 +84,26 @@ jobs:
               }
             }
 
-            if (lowScoreActions.length > 0) {
-              console.error('❌ The following maintained actions have score < 10:');
-              lowScoreActions.forEach(({ name, score }) => {
-                console.error(`- ${name}: ${score}`);
-              });
-              process.exit(1);
-            } else {
-              console.log('✅ All maintained actions have score >= 10');
-            }
+            fs.writeFileSync('low-score-actions.json', JSON.stringify(lowScoreActions, null, 2));
           }
 
           main();
           EOF
 
           node check-scores.js
+
+      - name: Print and fail if any scores < 10
+        run: |
+          if [ -f low-score-actions.json ]; then
+            count=$(jq 'length' low-score-actions.json)
+            if [ "$count" -gt 0 ]; then
+              echo "❌ The following maintained actions have score < 10:"
+              jq -r '.[] | "- \(.name): \(.score)"' low-score-actions.json
+              exit 1
+            else
+              echo "✅ All maintained actions have score >= 10"
+            fi
+          else
+            echo "⚠️ Score results not found"
+            exit 1
+          fi
