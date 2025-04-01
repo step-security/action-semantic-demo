@@ -98,7 +98,7 @@ jobs:
             count=$(jq 'length' low-score-actions.json)
             if [ "$count" -gt 0 ]; then
               echo "❌ The following maintained actions have score < 10:"
-              jq --silent -r '.[] | "- \(.name): \(.score) → https://app.stepsecurity.io/action-advisor/\(.name)"' low-score-actions.json
+              jq -r '.[] | "- \(.name): \(.score) → https://app.stepsecurity.io/action-advisor/\(.name)"' low-score-actions.json
               exit 1
             else
               echo "✅ All maintained actions have score >= 10"
