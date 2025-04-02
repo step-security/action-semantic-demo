@@ -120,7 +120,7 @@ jobs:
             count=$(jq 'length' vulnerable-actions.json)
             if [ "$count" -gt 0 ]; then
               echo "🚨 Maintained actions with vulnerabilities (vulnerabilities-score < 10):"
-              jq -r '.[] | "- \(.name): vulnerabilities-score = \(.vulnScore)\n  → Advisor: https://app.stepsecurity.io/action-advisor/\(.name)\n  → GitHub Security: https://github.com/\(.name)/security/code-scanning"' vulnerable-actions.json
+              jq -r '.[] | "- \(.name): vulnerabilities-score = \(.vulnScore) → GitHub Security: https://github.com/\(.name)/security/code-scanning"' vulnerable-actions.json
 
               echo ""
               exit 1
