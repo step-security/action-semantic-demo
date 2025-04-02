@@ -17,7 +17,6 @@ permissions:
 
 jobs:
   release:
-    environment: releaseNewActionVersion
     permissions:
       actions: read
       id-token: write
