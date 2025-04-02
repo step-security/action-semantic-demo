@@ -16,9 +16,9 @@ permissions:
   contents: read
 
 jobs:
-  enforce-environment:
+  create-tag:
     runs-on: ubuntu-latest
-
+    environment: releaseNewActionVersion
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -26,6 +26,8 @@ jobs:
       - name: Create and Push Tag
         id: set-tag
         run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
           git tag ${{ github.event.inputs.tag }}
           git push origin ${{ github.event.inputs.tag }}
           echo "tag=${{ github.event.inputs.tag }}" >> "$GITHUB_OUTPUT"
@@ -33,11 +35,12 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   release:
+    needs: create-tag
     permissions:
       actions: read
       id-token: write
       contents: write
-    uses: step-security/reusable-workflows/.github/workflows/actions_release.yaml@v1
+    uses: step-security/reusable-workflows/.github/workflows/actions_release.yaml@fix_Action_Release-WF
     with:
       tag: "${{ github.event.inputs.tag }}"
       script: ${{ github.event.inputs.script }}
