@@ -13,32 +13,17 @@ on:
         default: "yarn run build"
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  create-tag:
-    runs-on: ubuntu-latest
-    environment: releaseNewActionVersion
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Create and Push Tag
-        id: set-tag
-        run: |
-          git tag ${{ github.event.inputs.tag }}
-          git push origin ${{ github.event.inputs.tag }}
-          echo "tag=${{ github.event.inputs.tag }}" >> "$GITHUB_OUTPUT"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
   release:
-    needs: create-tag
+    environment: releaseNewActionVersion
     permissions:
       actions: read
       id-token: write
       contents: write
-    uses: step-security/reusable-workflows/.github/workflows/actions_release.yaml@fix_Action_Release-WF
+
+    uses: step-security/reusable-workflows/.github/workflows/actions_release.yaml@v1
     with:
       tag: "${{ github.event.inputs.tag }}"
-      script: ${{ github.event.inputs.script }}
+      script: "${{ github.event.inputs.script }}"
