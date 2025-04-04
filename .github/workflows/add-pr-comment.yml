@@ -1,0 +1,36 @@
+name: add-pr-comment
+
+on:
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'Pull Request number to comment on'
+        required: true
+        type: number
+      action-tag:
+        description: 'Tag for the action'
+        required: true
+        default: 'main'
+
+jobs:
+  test-comment:
+    runs-on: ubuntu-latest
+
+    permissions:
+      pull-requests: write
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Add PR comment
+        uses: step-security/dynamic-uses@v1
+        with:
+          uses: step-security/add-pr-comment@${{ inputs.action-tag }}
+          with: >
+            {
+              "issue": "${{ inputs.pr_number }}",
+              "message": "✅ **Test Comment**\nThis is a test comment triggered by `workflow_dispatch` on PR #${{ inputs.pr_number }}.",
+              "message-id": "test-dispatch-id",
+              "repo-token": "${{ secrets.GITHUB_TOKEN }}"
+            }
