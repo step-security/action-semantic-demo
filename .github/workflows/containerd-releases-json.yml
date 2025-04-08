@@ -55,7 +55,7 @@ jobs:
         name: Create PR
         uses: peter-evans/create-pull-request@5e914681df9dc83aa4e4905692ca88beb2f9e91f
         with:
-          base: master
+          base: main
           branch: bot/containerd-releases-json
           commit-message: "update .github/containerd-releases.json"
           signoff: true
