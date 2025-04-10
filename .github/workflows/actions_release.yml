@@ -11,6 +11,10 @@ on:
         required: true
         type: string
         default: "yarn run build"
+      yarn_version:
+        required: false
+        type: string
+        default: "3.6.3"
 
 permissions:
   contents: read
@@ -26,3 +30,4 @@ jobs:
     with:
       tag: "${{ github.event.inputs.tag }}"
       script: "${{ github.event.inputs.script }}"
+      yarn_version: '3.6.3'
