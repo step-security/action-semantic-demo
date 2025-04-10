@@ -11,10 +11,6 @@ on:
         required: true
         type: string
         default: "yarn run build"
-      yarn_version:
-        required: false
-        type: string
-        default: "3.6.3"
 
 permissions:
   contents: read
@@ -26,8 +22,7 @@ jobs:
       id-token: write
       contents: write
 
-    uses: step-security/reusable-workflows/.github/workflows/actions_release.yaml@v1
+    uses: step-security/reusable-workflows/.github/workflows/actions_release.yaml@fix_Action-Release-for-yarn
     with:
       tag: "${{ github.event.inputs.tag }}"
       script: "${{ github.event.inputs.script }}"
-      yarn_version: '3.6.3'
