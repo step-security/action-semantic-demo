@@ -7,10 +7,9 @@ on:
         description: "Tag for the release"
         required: true
       script:
-        description: "Specify the build script to run"
-        required: true
-        type: string
-        default: "yarn run build"
+        description: "Script to run for the release"
+        required: false
+        default: "npm run test"
 
 permissions:
   contents: read
@@ -21,8 +20,7 @@ jobs:
       actions: read
       id-token: write
       contents: write
-
-    uses: step-security/reusable-workflows/.github/workflows/actions_release.yaml@fix_Action-Release-for-yarn
+    uses: step-security/reusable-workflows/.github/workflows/actions_release.yaml@v1
     with:
       tag: "${{ github.event.inputs.tag }}"
       script: "${{ github.event.inputs.script }}"

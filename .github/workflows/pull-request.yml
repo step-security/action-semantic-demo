@@ -1,28 +1,31 @@
-name: 'Lint PR title'
+name: Pull request
 on:
   pull_request_target:
     types:
       - opened
+      - reopened
       - edited
       - synchronize
 
 permissions:
   contents: read
-  pull-requests: read
 
 jobs:
   main:
     runs-on: ubuntu-latest
+    
+    permissions:
+      statuses: write
+
     steps:
       - name: Harden Runner
-        uses: step-security/harden-runner@v2
+        uses: step-security/harden-runner@4d991eb9b905ef189e4c376166672c3f2f230481 # v2.11.0
         with:
           egress-policy: audit
 
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v3
-        with:
-          node-version: 20
+      - name: Check out repository
+        uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744 # v3.6.0
+
       - uses: ./
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
