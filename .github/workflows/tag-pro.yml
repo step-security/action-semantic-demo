@@ -1,0 +1,16 @@
+name: Create Tag Protection Rule
+
+on:
+  workflow_dispatch:
+
+jobs:
+  create-tag-protection:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create tag protection rule
+        run: |
+          curl -X POST "https://api.github.com/repos/${{ github.repository }}/tags/protection" \
+            -H "Authorization: token ${{ secrets.REPO_ACCESS_TOKEN }}" \
+            -H "Accept: application/vnd.github+json" \
+            -H "Content-Type: application/json" \
+            -d '{"pattern": "v*"}'
