@@ -9,7 +9,6 @@ jobs:
     permissions:
       contents: write  # doesn't help here, but you can try
       actions: write
-      administration: write  # only works if GitHub actually allows admin operations (they don't for GITHUB_TOKEN)
     steps:
       - name: Try to create tag protection rule with GITHUB_TOKEN
         run: |
