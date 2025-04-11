@@ -1,4 +1,4 @@
-name: Create Tag Protection Rule
+name: Test Tag Protection With Default Token
 
 on:
   workflow_dispatch:
@@ -6,11 +6,15 @@ on:
 jobs:
   create-tag-protection:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write  # doesn't help here, but you can try
+      actions: write
+      administration: write  # only works if GitHub actually allows admin operations (they don't for GITHUB_TOKEN)
     steps:
-      - name: Create tag protection rule
+      - name: Try to create tag protection rule with GITHUB_TOKEN
         run: |
-          curl -X POST "https://api.github.com/repos/${{ github.repository }}/tags/protection" \
-            -H "Authorization: token ${{ secrets.REPO_ACCESS_TOKEN }}" \
+          curl -i -X POST "https://api.github.com/repos/${{ github.repository }}/tags/protection" \
+            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
             -H "Accept: application/vnd.github+json" \
             -H "Content-Type: application/json" \
             -d '{"pattern": "v*"}'
