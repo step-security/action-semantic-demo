@@ -28,18 +28,6 @@ jobs:
       - name: Install GuardDog
         run: pip install guarddog
 
-      - name: GuardDog local scan (fail if findings)
-        run: |
-          guarddog npm scan . --output-format json > guarddog_local.json
-          count=$(jq '.results | length' guarddog_local.json)
-          if [ "$count" -gt 0 ]; then
-            echo "❌ GuardDog found $count issue(s)"
-            cat guarddog_local.json
-            exit 1
-          else
-            echo "✅ GuardDog found no issues"
-          fi
-
       - name: 🧪 Scan dependencies (package.json)
         run: guarddog npm verify ./package.json --output-format sarif > guarddog_deps.sarif
 
@@ -51,3 +39,15 @@ jobs:
 
       - name: 📝 Show local scan result in logs
         run: cat guarddog_local.json
+
+      - name: GuardDog local scan (fail if findings)
+        run: |
+          guarddog npm scan . --output-format json > guarddog_local.json
+          count=$(jq '.results | length' guarddog_local.json)
+          if [ "$count" -gt 0 ]; then
+            echo "❌ GuardDog found $count issue(s)"
+            cat guarddog_local.json
+            exit 1
+          else
+            echo "✅ GuardDog found no issues"
+          fi
