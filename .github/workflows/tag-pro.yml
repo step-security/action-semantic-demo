@@ -3,6 +3,9 @@ name: Test Tag Protection With Default Token
 on:
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   create-tag-protection:
     runs-on: ubuntu-latest
@@ -10,6 +13,11 @@ jobs:
       contents: write  # doesn't help here, but you can try
       actions: write
     steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@v2
+        with:
+          egress-policy: audit
+
       - name: Try to create tag protection rule with GITHUB_TOKEN
         run: |
           curl -i -X POST "https://api.github.com/repos/${{ github.repository }}/tags/protection" \

@@ -18,6 +18,11 @@ jobs:
       security-events: write
 
     steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@c6295a65d1254861815972266d5933fd6e532bdf # v2.11.1
+        with:
+          egress-policy: audit
+
       - uses: actions/checkout@v4
 
       - name: Set up Python
@@ -32,7 +37,7 @@ jobs:
         run: guarddog npm verify ./package.json --output-format sarif > guarddog_deps.sarif
 
       - name: 📤 Upload SARIF to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@45775bd8235c68ba998cffa5171334d58593da47 # v3.28.15
         with:
           category: guarddog-npm-dependencies
           sarif_file: guarddog_deps.sarif
