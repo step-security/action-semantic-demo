@@ -511,6 +511,7 @@ jobs:
           fi
 
       - name: Update Last Sync Date via gh CLI
+        if: env.RELEASE_DATE != ''
         run: |
           REPO="${{ github.repository }}"
           ISSUE_NUMBER="${{ env.ISSUE_NUMBER }}"
