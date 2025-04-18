@@ -1,76 +1,125 @@
-# StepSecurity Maintained Conventional PR Title Action
+[![GitHub release](https://img.shields.io/github/release/step-security/ghaction-setup-docker.svg?style=flat-square)](https://github.com/step-security/ghaction-setup-docker/releases/latest)
+[![GitHub marketplace](https://img.shields.io/badge/marketplace-docker--setup--docker-blue?logo=github&style=flat-square)](https://github.com/marketplace/actions/docker-setup-docker)
+[![CI workflow](https://img.shields.io/github/actions/workflow/status/step-security/ghaction-setup-docker/ci.yml?branch=main&label=ci&logo=github&style=flat-square)](https://github.com/step-security/ghaction-setup-docker/actions?workflow=ci)
+[![Test workflow](https://img.shields.io/github/actions/workflow/status/step-security/ghaction-setup-docker/test.yml?branch=main&label=test&logo=github&style=flat-square)](https://github.com/step-security/ghaction-setup-docker/actions?workflow=test)
+[![Codecov](https://img.shields.io/codecov/c/github/step-security/ghaction-setup-docker?logo=codecov&style=flat-square)](https://codecov.io/gh/step-security/ghaction-setup-docker)
 
-Forked from: [aslafy-z/conventional-pr-title-action](https://github.com/aslafy-z/conventional-pr-title-action)
+## About
 
-This is a [GitHub Action](https://github.com/features/actions) that ensures your PR title matches the [Conventional Commits spec](https://www.conventionalcommits.org/).
+GitHub Action to set up (download and install) [Docker CE](https://docs.docker.com/engine/).
+Works on Linux, macOS and Windows.
 
-This is helpful when you're using [semantic-release](https://github.com/semantic-release/semantic-release) with the Conventional Commits preset. When using the `Squash and merge` strategy, GitHub will suggest to use the PR title as the commit message. With this action you can validate that the PR title will lead to a correct commit message.
+> [!WARNING]
+> Does not work on macOS runners with ARM architecture (no nested virtualization):
+> * https://github.com/docker/actions-toolkit/issues/317
 
-See [Conventional Commits](https://www.conventionalcommits.org/) for sample titles.
+![Screenshot](.github/setup-docker-action.png)
 
-## Inputs
+___
 
-### `success-state`
+* [Usage](#usage)
+  * [Quick start](#quick-start)
+  * [Daemon configuration](#daemon-configuration)
+  * [Define custom `limactl start` arguments (macOS)](#define-custom-limactl-start-arguments-macos)
+* [Customizing](#customizing)
+  * [inputs](#inputs)
+  * [outputs](#outputs)
+* [Contributing](#contributing)
+* [License](#license)
 
-**Optional.** Description of the status check if validation succeeds.
-> Default: `"Title follows the specification."`.
+## Usage
 
-### `failure-state`
-
-**Optional.** Description of the status check if validation fails.
-> Default: `"Title does not follow the specification."`.
-
-### `context-name`
-
-**Optional.** Persistent status check context key. 
-> Default: `"conventional-pr-title"`.
-
-### `preset`
-
-**Optional.** Conventional changelog preset.
-> Default: `"conventional-changelog-conventionalcommits@5.0.0"`.
-
-### `target-url`
-
-**Optional.** URL to be used when linking the "Details" in the actions overview.
-> Default: `"https://www.conventionalcommits.org/en/v1.0.0/#summary"`.
-
-## Outputs
-
-### `success`
-
-`true` if the validation succeed, `false` otherwise.
-
-### `error`
-
-In case of an error (`success=false`), contains the error message for additional processing or usage in notifications.
-
-## Example usage
+### Quick start
 
 ```yaml
-name: Check PR title
+name: ci
 
 on:
-  pull_request_target:
-    types:
-      - opened
-      - reopened
-      - edited
-      - synchronize
+  push:
 
 jobs:
-  lint:
+  docker:
     runs-on: ubuntu-latest
-    permissions:
-      statuses: write
     steps:
-      - uses: step-security/conventional-pr-title-action@v3
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      -
+        name: Set up Docker
+        uses: step-security/ghaction-setup-docker@v3
 ```
 
-> Note: Avoid using `main` ref, prefer to pin to a specific version.
+### Daemon configuration
 
-## Credits
+You can [configure the Docker daemon](https://docs.docker.com/engine/reference/commandline/dockerd/#daemon-configuration-file)
+using the `daemon-config` input. In the following example, we configure the
+Docker daemon to enable debug and the [containerd image store](https://docs.docker.com/storage/containerd/)
+feature:
 
-All thanks goes to [`amannn`](https://github.com/amannn)'s [`semantic-pull-request`](https://github.com/amannn/action-semantic-pull-request) action.
+```yaml
+name: ci
+
+on:
+  push:
+
+jobs:
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      -
+        name: Set up Docker
+        uses: step-security/ghaction-setup-docker@v3
+        with:
+          daemon-config: |
+            {
+              "debug": true,
+              "features": {
+                "containerd-snapshotter": true
+              }
+            }
+```
+
+### Define custom `limactl start` arguments (macOS)
+
+You can define custom [`limactl start` arguments](https://lima-vm.io/docs/reference/limactl_start/)
+using the `LIMA_START_ARGS` environment variable to customize the VM:
+
+```yaml
+name: ci
+
+on:
+  push:
+
+jobs:
+  docker:
+    runs-on: macos-latest
+    steps:
+      -
+        name: Set up Docker
+        uses: step-security/ghaction-setup-docker@v3
+        env:
+          LIMA_START_ARGS: --cpus 4 --memory 8
+```
+
+## Customizing
+
+### inputs
+
+The following inputs can be used as `step.with` keys
+
+| Name            | Type   | Default               | Description                                                                                                                 |
+|-----------------|--------|-----------------------|-----------------------------------------------------------------------------------------------------------------------------|
+| `version`       | String | `latest`              | Docker CE version (e.g., `v24.0.6`).                                                                                        |
+| `channel`       | String | `stable`              | Docker CE [channel](https://download.docker.com/linux/static/) (e.g, `stable`, `edge` or `test`).                           |
+| `daemon-config` | String |                       | [Docker daemon JSON configuration](https://docs.docker.com/engine/reference/commandline/dockerd/#daemon-configuration-file) |
+| `context`       | String | `setup-docker-action` | Docker context name.                                                                                                        |
+| `set-host`      | Bool   | `false`               | Set `DOCKER_HOST` environment variable to docker socket path.                                                               |
+
+### outputs
+
+The following outputs are available
+
+| Name   | Type   | Description        |
+|--------|--------|--------------------|
+| `sock` | String | Docker socket path |
+
+## License
+
+Apache-2.0. See `LICENSE` for more details.

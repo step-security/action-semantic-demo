@@ -1,17 +1,23 @@
 version: 2
 updates:
-  # Maintain dependencies for GitHub Actions
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "daily"
-  # Maintain dependencies for npm
+    labels:
+      - "dependencies"
+      - "bot"
   - package-ecosystem: "npm"
     directory: "/"
     schedule:
       interval: "daily"
-  # Maintain dependencies for docker
-  - package-ecosystem: "docker"
-    directory: "/"
+    allow:
+      - dependency-type: "production"
+    labels:
+      - "dependencies"
+      - "bot"
+
+  - package-ecosystem: docker
+    directory: /test
     schedule:
-      interval: "daily"
+      interval: daily
