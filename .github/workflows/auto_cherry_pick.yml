@@ -70,10 +70,11 @@ jobs:
           if [[ -n "$TITLE_MATCH" || -n "$BRANCH_MATCH" ]]; then
             echo "❌ A cherry-pick PR already exists (PR #${TITLE_MATCH:-$BRANCH_MATCH})."
             echo "🔁 Please review and merge the existing PR before retrying."
-            exit 0
+            exit 1
           else
             echo "✅ No duplicate cherry-pick PRs found. Continuing workflow..."
           fi
+
       - name: Determine Action Type
         id: check-action
         run: |
