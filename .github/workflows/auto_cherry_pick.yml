@@ -7,10 +7,14 @@ on:
         description: "Base branch to create the PR against"
         required: true
         default: "main"
-      script:
-        description: "Specify the npm/yarn script to run if available"
+      package_manager:
+        description: "Specify package manager (npm or yarn)"
         required: false
-        default: "npm run test"      
+        default: "yarn"
+      script:
+        description: "Specify a script to run after audit fix"
+        required: false
+        default: "yarn build"
 
 permissions:
   contents: write
@@ -22,8 +26,8 @@ jobs:
   audit-fix:
     uses: step-security/reusable-workflows/.github/workflows/auto_cherry_pick.yaml@fix_UpStream-Changes-Cherry-Pick
     with:
-      original-owner: "aslafy-z"
-      repo-name: "conventional-pr-title-action"
+      original-owner: "crazy-max"
+      repo-name: "ghaction-setup-docker"
       base_branch: ${{ inputs.base_branch }}
-      script: ${{ inputs.script }}
-
+      package_manager: "yarn"
+      script: ${{ inputs.script || 'yarn build' }}
