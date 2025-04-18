@@ -62,13 +62,16 @@ jobs:
           BASE_BRANCH="${{ inputs.base_branch }}"
           PR_TITLE="chore: Cherry-picked changes from upstream"
 
-          echo "🔍 Looking for existing PR from '$BRANCH_NAME' to '$BASE_BRANCH' or with title '$PR_TITLE'"
+          echo "🔍 Checking for open PR with title: $PR_TITLE"
+          TITLE_MATCH=$(gh pr list --repo "$REPO" --state open --json number,title \
+            --jq ".[] | select(.title == \"$PR_TITLE\") | .number" | tr -d '\n')
 
-          PR_MATCH=$(gh pr list --repo "$REPO" --state open --json number,title,headRefName,baseRefName \
-            --jq ".[] | select((.title == \"$PR_TITLE\") or (.headRefName == \"$BRANCH_NAME\" and .baseRefName == \"$BASE_BRANCH\")) | .number")
+          echo "🔍 Checking for open PR from branch $BRANCH_NAME to $BASE_BRANCH"
+          BRANCH_MATCH=$(gh pr list --repo "$REPO" --state open --json number,headRefName,baseRefName \
+            --jq ".[] | select(.headRefName == \"$BRANCH_NAME\" and .baseRefName == \"$BASE_BRANCH\") | .number" | tr -d '\n')
 
-          if [ -n "$PR_MATCH" ]; then
-            echo "❌ A cherry-pick PR already exists (PR #$PR_MATCH)."
+          if [[ -n "$TITLE_MATCH" || -n "$BRANCH_MATCH" ]]; then
+            echo "❌ A cherry-pick PR already exists (PR #${TITLE_MATCH:-$BRANCH_MATCH})."
             echo "🔁 Please review and merge the existing PR before retrying."
             exit 0
           else
