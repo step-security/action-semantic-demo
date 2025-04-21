@@ -1,0 +1,62 @@
+name: GuardDog Full Security Scan
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  guarddog:
+    name: GuardDog - Full Scan (Own Code + Deps)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Harden the runner (Audit all outbound calls)
+        uses: step-security/harden-runner@c6295a65d1254861815972266d5933fd6e532bdf # v2.11.1
+        with:
+          egress-policy: audit
+
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install GuardDog
+        run: pip install guarddog
+
+      - name: 🔍 Scan dependencies (package.json) and fail if issues
+        run: |
+          guarddog npm verify ./package.json --output-format json > guarddog_deps.json
+          count=$(jq '.results | length' guarddog_deps.json)
+          if [ "$count" -gt 0 ]; then
+            echo "❌ GuardDog found $count dependency issue(s)"
+            cat guarddog_deps.json
+            exit 1
+          else
+            echo "✅ No dependency issues found in package.json"
+          fi
+
+      - name: 📝 Show dependency scan result
+        run: cat guarddog_deps.json
+
+      - name: GuardDog local scan (fail if findings)
+        run: |
+          guarddog npm scan . --output-format json > guarddog_local.json
+          count=$(jq '.results | length' guarddog_local.json)
+          if [ "$count" -gt 0 ]; then
+            echo "❌ GuardDog found $count issue(s)"
+            cat guarddog_local.json
+            exit 1
+          else
+            echo "✅ GuardDog found no issues"
+          fi
+      - name: 📝 Show local scan result in logs
+        run: cat guarddog_local.json
