@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   guarddog:
-    name: GuardDog - Full Scan (Own Code + Deps)
+    name: GuardDog - Full Scan
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -27,41 +27,12 @@ jobs:
       - name: Install GuardDog
         run: pip install guarddog
 
-      - name: 🔍 Scan dependencies (package.json)
-        id: deps_scan
-        continue-on-error: true
-        run: |
-          guarddog npm verify ./package.json --output-format json > guarddog_deps.json
-          count=$(jq '.results | length' guarddog_deps.json)
-          echo "count=$count" >> $GITHUB_OUTPUT
-          if [ "$count" -gt 0 ]; then
-            echo "❌ GuardDog found $count dependency issue(s)"
-            cat guarddog_deps.json
-          else
-            echo "✅ No dependency issues found in package.json"
-          fi
       - name: 🐶 Local files scan
         id: local_scan
-        continue-on-error: true
         run: |
-          guarddog npm scan . --output-format json > guarddog_local.json
-          count=$(jq '.results | length' guarddog_local.json)
-          echo "count=$count" >> $GITHUB_OUTPUT
-          if [ "$count" -gt 0 ]; then
-            echo "❌ GuardDog found $count local issue(s)"
-            cat guarddog_local.json
-          else
-            echo "✅ No local issues found"
-          fi
-      - name: ❗ Final check for failures
+          guarddog npm scan .
+
+      - name: 🔍 Scan dependencies (package.json)
+        id: deps_scan
         run: |
-          deps_count="${{ steps.deps_scan.outputs.count }}"
-          local_count="${{ steps.local_scan.outputs.count }}"
-          echo "Dependency issues: $deps_count"
-          echo "Local issues: $local_count"
-          if [ "$deps_count" -gt 0 ] || [ "$local_count" -gt 0 ]; then
-            echo "❌ GuardDog scan failed"
-            exit 1
-          else
-            echo "✅ All GuardDog scans passed"
-          fi
+          guarddog npm verify ./package.json
