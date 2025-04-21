@@ -11,4 +11,4 @@ permissions:
 
 jobs:
   call-guarddog-scan:
-    uses: ./.github/workflows/guarddog-scan.yml
+    uses: step-security/reusable-workflows/.github/workflows/guarddog.yml@release_guarddog-security
