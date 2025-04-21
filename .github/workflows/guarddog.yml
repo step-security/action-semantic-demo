@@ -1,4 +1,4 @@
-name: GuardDog Full Security Scan
+name: Run GuardDog Scan on PRs
 
 on:
   push:
@@ -10,29 +10,5 @@ permissions:
   contents: read
 
 jobs:
-  guarddog:
-    name: GuardDog - Full Scan
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.10"
-
-      - name: Install GuardDog
-        run: pip install guarddog
-
-      - name: 🐶 Local files scan
-        id: local_scan
-        run: |
-          guarddog npm scan .
-
-      - name: 🔍 Scan dependencies (package.json)
-        id: deps_scan
-        run: |
-          guarddog npm verify ./package.json
+  call-guarddog-scan:
+    uses: ./.github/workflows/guarddog-scan.yml
