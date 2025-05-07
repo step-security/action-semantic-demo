@@ -1,3 +1,4 @@
+
 name: Auto Cherry-Pick from Upstream
 
 on:
@@ -14,7 +15,7 @@ on:
       script:
         description: "Specify a script to run after audit fix"
         required: false
-        default: "yarn build"
+        default: "yarn run all"
 
 permissions:
   contents: write
@@ -26,8 +27,8 @@ jobs:
   audit-fix:
     uses: step-security/reusable-workflows/.github/workflows/auto_cherry_pick.yaml@upstream-Changes-CherryPick
     with:
-      original-owner: "crazy-max"
-      repo-name: "ghaction-setup-docker"
+      original-owner: "tj-actions"
+      repo-name: "changed-files"
       base_branch: ${{ inputs.base_branch }}
       package_manager: "yarn"
-      script: ${{ inputs.script || 'yarn build' }}
+      script: ${{ inputs.script || 'yarn run all' }}
