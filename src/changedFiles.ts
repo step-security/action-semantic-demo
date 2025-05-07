@@ -88,6 +88,7 @@ export const processChangedFiles = async ({
       core.info('All Done!')
       core.endGroup()
     }
+
     if (modifiedKeys.length > 0) {
       await setArrayOutput({
         key: 'modified_keys',
