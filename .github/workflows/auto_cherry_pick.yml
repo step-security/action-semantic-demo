@@ -386,7 +386,9 @@ jobs:
                 UPDATED_CONTENT=$(base64 -w 0 temp_file.txt)
                 echo "$UPDATED_CONTENT" > tmp_b64.txt
 
-                COMMIT_PAYLOAD=$(jq -n \
+                COMMIT_PAYLOAD=$(mktemp)
+
+                jq -n \
                   --rawfile content tmp_b64.txt \
                   --arg msg "$COMMIT_MESSAGE" \
                   --arg branch "$BRANCH" \
@@ -396,7 +398,10 @@ jobs:
                     content: $content,
                     branch: $branch,
                     sha: $sha
-                  }')
+                  }' > "$COMMIT_PAYLOAD"
+
+                rm -f tmp_b64.txt
+
 
 
                 RESPONSE=$(gh api --method PUT "repos/$TARGET_REPO/contents/$file" \
