@@ -384,29 +384,21 @@ jobs:
 
                 # Commit the patched file via GitHub API
                 UPDATED_CONTENT=$(base64 -w 0 temp_file.txt)
-                echo "$UPDATED_CONTENT" > tmp_b64.txt
+                JSON_PAYLOAD=$(mktemp)
+                echo "{
+                  \"message\": \"$COMMIT_MESSAGE\",
+                  \"content\": \"$UPDATED_CONTENT\",
+                  \"branch\": \"$BRANCH\",
+                  \"sha\": \"$SHA\"
+                }" > "$JSON_PAYLOAD"
 
-                COMMIT_PAYLOAD=$(mktemp)
+                RESPONSE=$(curl -s -X PUT \
+                  -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+                  -H "Accept: application/vnd.github.v3+json" \
+                  --data-binary @"$JSON_PAYLOAD" \
+                  "https://api.github.com/repos/$TARGET_REPO/contents/$file" || echo "ERROR")
 
-                jq -n \
-                  --rawfile content tmp_b64.txt \
-                  --arg msg "$COMMIT_MESSAGE" \
-                  --arg branch "$BRANCH" \
-                  --arg sha "$SHA" \
-                  '{
-                    message: $msg,
-                    content: $content,
-                    branch: $branch,
-                    sha: $sha
-                  }' > "$COMMIT_PAYLOAD"
-
-                rm -f tmp_b64.txt
-
-
-
-                RESPONSE=$(gh api --method PUT "repos/$TARGET_REPO/contents/$file" \
-                    -H "Accept: application/vnd.github.v3+json" \
-                    --input - <<< "$COMMIT_PAYLOAD" 2>/dev/null || echo "ERROR")
+                rm -f "$JSON_PAYLOAD"
 
                 if [ "$RESPONSE" == "ERROR" ] || ! echo "$RESPONSE" | jq -e '.content' > /dev/null; then
                   echo "❌ Failed to commit changes for $file."
