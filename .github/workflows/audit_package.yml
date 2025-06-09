@@ -21,7 +21,7 @@ on:
 
 jobs:
   audit-fix:
-    uses: step-security/reusable-workflows/.github/workflows/audit_fix.yml@fix_Reusable-Workflow-Issues
+    uses: step-security/reusable-workflows/.github/workflows/audit_fix.yml@f365ca222ac6b7c60a02d52e3c819618dc13ba3d
     with:
       base_branch: ${{ inputs.base_branch || 'main' }}
       package_manager: "yarn"
