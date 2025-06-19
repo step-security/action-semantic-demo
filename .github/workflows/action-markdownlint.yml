@@ -11,5 +11,4 @@ jobs:
     uses: step-security/workflow-playground/.github/workflows/action-markdown-lint.yml@main
     with:
       action-tag: ${{ github.head_ref || github.ref_name }}
-    secrets:
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
