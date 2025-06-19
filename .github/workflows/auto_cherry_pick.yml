@@ -1,4 +1,3 @@
-
 name: Auto Cherry-Pick from Upstream
 
 on:
@@ -8,14 +7,6 @@ on:
         description: "Base branch to create the PR against"
         required: true
         default: "main"
-      package_manager:
-        description: "Specify package manager (npm or yarn)"
-        required: false
-        default: "yarn"
-      script:
-        description: "Specify a script to run after audit fix"
-        required: false
-        default: "yarn run all"
 
 permissions:
   contents: write
@@ -24,11 +15,9 @@ permissions:
   issues: write
 
 jobs:
-  audit-fix:
-    uses: step-security/reusable-workflows/.github/workflows/auto_cherry_pick.yaml@fix_Reusable-Workflow-Issues
+  cherry-pick:
+    uses: step-security/reusable-workflows/.github/workflows/auto_cherry_pick.yaml@v1
     with:
-      original-owner: "tj-actions"
-      repo-name: "changed-files"
+      original-owner: "reviewdog"
+      repo-name: "action-markdownlint"
       base_branch: ${{ inputs.base_branch }}
-      package_manager: "yarn"
-      script: ${{ inputs.script || 'yarn run all' }}
