@@ -1,0 +1,15 @@
+name: action-markdownlint
+
+on:
+  pull_request:
+    branches: [ main ]
+  push:
+    branches: [ main ]
+
+jobs:
+  call-markdown-lint:
+    uses: step-security/workflow-playground/.github/workflows/action-markdown-lint.yml@main
+    with:
+      action-tag: ${{ github.head_ref || github.ref_name }}
+    secrets:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
