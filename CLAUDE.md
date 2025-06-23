@@ -4,71 +4,76 @@
 - **Repository**: stefanzweifel/git-auto-commit-action
 - **Target Release Version**: 6.0.1
 
-## Cherry-pick Analysis Workflow
+## Cherry-pick Verification (Changes Only)
 
-When analyzing cherry-pick PRs, Claude should automatically:
+When analyzing cherry-pick PRs, Claude should verify that ALL upstream changes are properly cherry-picked:
 
-1. **Extract Target Release Version**: Parse the PR description/comments for "Target Release Version:" and get that version
-2. **Get Previous Version**: Identify the previous version before the target release version
-3. **Fetch Upstream Changes**: Get the diff between previous version and target version in upstream (stefanzweifel/git-auto-commit-action)
-4. **Review Only New Changes**: Analyze ONLY the new changes in the current PR (not all files)
-5. **Compare with Upstream**: Identify what's missing from upstream that should be cherry-picked
-6. **Check Existing Comments**: Skip files already mentioned as conflicts/missing in PR comments
-7. **Provide Focused Feedback**: 
-   - Missing files/changes from upstream
-   - Problematic or incorrect changes
-   - Files that need attention
-   - Skip already-discussed conflicts
+1. **Extract Target Release Version**: Parse the PR description for "Target Release Version:" 
+2. **Get Upstream Changes**: Fetch ALL changes between previous version and target version in upstream (stefanzweifel/git-auto-commit-action)
+3. **Get PR Changes**: Get ALL changes in our current PR
+4. **Verify Cherry-pick Completeness**: 
+   - For files that exist in both: Check if all changes match
+   - Ignore missing files (handled manually)
+   - Ignore conflicting files (handled manually)
+   - Focus only on: "Are all upstream changes properly applied?"
+5. **Final Status**: 
+   - ✅ "All upstream changes successfully cherry-picked"
+   - ❌ "Some upstream changes not properly applied"
 
-### Analysis Commands
+### File-by-File Comparison Commands
 ```bash
 # Extract target version from PR description
 gh pr view <PR_NUMBER> --json body | jq -r '.body' | grep "Target Release Version:" | sed 's/.*Target Release Version: *//'
 
-# Get upstream releases to find previous version
-gh api repos/stefanzweifel/git-auto-commit-action/releases --paginate | jq -r '.[].tag_name' | sort -V
+# Get ALL upstream files with change counts
+gh api repos/stefanzweifel/git-auto-commit-action/compare/v{PREV}...v{TARGET} | jq '.files[] | {filename: .filename, additions: .additions, deletions: .deletions, changes: .changes}'
 
-# Compare upstream versions (e.g., v6.0.0 to v6.0.1)
-gh api repos/stefanzweifel/git-auto-commit-action/compare/v{PREV}...v{TARGET}
+# Get ALL our PR files with change counts  
+gh pr view <PR_NUMBER> --json files | jq '.files[] | {filename: .filename, additions: .additions, deletions: .deletions, changes: .changes}'
 
-# Get only NEW changes in our PR (files changed)
-gh pr diff <PR_NUMBER> --name-only
+# For each file, compare change counts:
+# 1. Upstream: filename (+X, -Y, total Z changes)
+# 2. Our PR: filename (+A, -B, total C changes)
+# 3. Flag if: X≠A or Y≠B (incomplete cherry-pick)
+# 4. Flag if: upstream file missing entirely in our PR
 
-# Get PR comments to check for already mentioned conflicts
-gh pr view <PR_NUMBER> --json comments | jq -r '.comments[].body'
-
-# Compare specific file between our PR and upstream
-git show HEAD:<filename> vs upstream version
+# Get total change summary
+# Upstream total: gh api repos/stefanzweifel/git-auto-commit-action/compare/v{PREV}...v{TARGET} | jq '{total_files: (.files | length), total_additions: (.files | map(.additions) | add), total_deletions: (.files | map(.deletions) | add)}'
 ```
 
 ### Comment Template
 ```markdown
-## Cherry-pick Review: Target Release Version v{TARGET}
+## Cherry-pick Verification: v{TARGET}
 
-### New Changes in This PR
-**Files Modified:**
-- [List only files changed in this PR]
+### Upstream Changes (stefanzweifel/git-auto-commit-action v{PREV} → v{TARGET})
+**Total upstream changes**: X files, +Y lines, -Z lines
 
-### Missing from Upstream v{PREV} → v{TARGET}
-❌ **Files/Changes Not Cherry-picked:**
-- [Files that exist in upstream diff but missing from our PR]
-- [Specific changes within files that are missing]
+### Files Analyzed (Present in Both)
+✅ **Correctly Cherry-picked:**
+- **file1.ext**: 
+  - Upstream: +5 lines, -2 lines
+  - Our PR: +5 lines, -2 lines ✅ Perfect match
+- **file2.ext**: 
+  - Upstream: +10 lines, -3 lines  
+  - Our PR: +10 lines, -3 lines ✅ Perfect match
 
-### Issues Found
-🔍 **Problematic Changes:**
-- [Changes that seem incorrect or problematic]
-- [Files modified incorrectly]
+❌ **Incorrect Cherry-picks:**
+- **file5.ext**:
+  - Upstream: +12 lines, -4 lines
+  - Our PR: +8 lines, -2 lines ❌ Changes don't match
 
-### Files Already Discussed
-ℹ️ **Skipping (already mentioned in comments):**
-- [Files already marked as conflicts/missing in PR comments]
+### Summary
+- **Files analyzed**: X (files present in both upstream and our PR)
+- **Perfect matches**: X files ✅
+- **Incorrect changes**: X files ❌
+- **Files skipped**: Missing/conflicting files (handled manually)
 
-### Recommendations
-✅ **Action Required:**
-- [Specific files/changes that need to be added]
-- [Changes that need to be corrected]
+### Result
+✅ **Status**: All upstream changes correctly cherry-picked
+*or*
+❌ **Status**: Some changes need correction - see incorrect cherry-picks above
 
-*Note: Only reviewing new changes in this PR, not re-analyzing previously discussed conflicts.*
+*Note: Only analyzing files present in both upstream and our PR. Missing/conflicting files are handled manually.*
 ```
 
 ## Upstream Tracking
