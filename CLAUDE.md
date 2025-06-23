@@ -11,13 +11,14 @@ When analyzing cherry-pick PRs, Claude should automatically:
 1. **Extract Target Release Version**: Parse the PR description/comments for "Target Release Version:" and get that version
 2. **Get Previous Version**: Identify the previous version before the target release version
 3. **Fetch Upstream Changes**: Get the diff between previous version and target version in upstream (stefanzweifel/git-auto-commit-action)
-4. **Get PR Changes**: Analyze the changes in our current PR
-5. **Compare Changes**: Compare upstream changes with our PR changes
-6. **Post Analysis Comment**: Create detailed comments about:
-   - What changes are expected from upstream
-   - What changes are actually in our PR
-   - What's missing or extra
-   - Recommendations
+4. **Review Only New Changes**: Analyze ONLY the new changes in the current PR (not all files)
+5. **Compare with Upstream**: Identify what's missing from upstream that should be cherry-picked
+6. **Check Existing Comments**: Skip files already mentioned as conflicts/missing in PR comments
+7. **Provide Focused Feedback**: 
+   - Missing files/changes from upstream
+   - Problematic or incorrect changes
+   - Files that need attention
+   - Skip already-discussed conflicts
 
 ### Analysis Commands
 ```bash
@@ -30,45 +31,44 @@ gh api repos/stefanzweifel/git-auto-commit-action/releases --paginate | jq -r '.
 # Compare upstream versions (e.g., v6.0.0 to v6.0.1)
 gh api repos/stefanzweifel/git-auto-commit-action/compare/v{PREV}...v{TARGET}
 
-# Get changes in our PR
-gh pr diff <PR_NUMBER>
+# Get only NEW changes in our PR (files changed)
+gh pr diff <PR_NUMBER> --name-only
 
-# Get specific file changes in our PR
-gh pr view <PR_NUMBER> --json files | jq -r '.files[].filename'
+# Get PR comments to check for already mentioned conflicts
+gh pr view <PR_NUMBER> --json comments | jq -r '.comments[].body'
+
+# Compare specific file between our PR and upstream
+git show HEAD:<filename> vs upstream version
 ```
 
 ### Comment Template
 ```markdown
-## Cherry-pick Analysis: Target Release Version v{TARGET}
+## Cherry-pick Review: Target Release Version v{TARGET}
 
-### Expected Changes from Upstream (stefanzweifel/git-auto-commit-action v{PREV} → v{TARGET})
-**Upstream Release Notes:**
-- [List changes from upstream release]
+### New Changes in This PR
+**Files Modified:**
+- [List only files changed in this PR]
 
-**Files Modified in Upstream:**
-1. **file.ext**: [Specific changes]
-2. **file2.ext**: [Specific changes]
+### Missing from Upstream v{PREV} → v{TARGET}
+❌ **Files/Changes Not Cherry-picked:**
+- [Files that exist in upstream diff but missing from our PR]
+- [Specific changes within files that are missing]
 
-### Changes in This PR
-**Files Modified in Our PR:**
-1. **file.ext**: [What was changed]
-2. **file2.ext**: [What was changed]
+### Issues Found
+🔍 **Problematic Changes:**
+- [Changes that seem incorrect or problematic]
+- [Files modified incorrectly]
 
-### Comparison Analysis
-✅ **Correctly Cherry-picked:**
-- [Changes that match upstream]
-
-❌ **Missing from PR:**
-- [Expected changes that are not in our PR]
-
-⚠️ **Extra Changes in PR:**
-- [Changes in our PR that are not in upstream]
-
-🔍 **Differences Found:**
-- [Any discrepancies between upstream and our changes]
+### Files Already Discussed
+ℹ️ **Skipping (already mentioned in comments):**
+- [Files already marked as conflicts/missing in PR comments]
 
 ### Recommendations
-- [Action items based on analysis]
+✅ **Action Required:**
+- [Specific files/changes that need to be added]
+- [Changes that need to be corrected]
+
+*Note: Only reviewing new changes in this PR, not re-analyzing previously discussed conflicts.*
 ```
 
 ## Upstream Tracking
