@@ -34,29 +34,27 @@ Keep following things in mind:
 
 ## 🚨 MANDATORY: Cherry-Pick Verification 
 
-**CRITICAL: For cherry-pick PRs, you MUST fetch upstream data and compare file-by-file**
+**CRITICAL: For cherry-pick PRs, you MUST perform file-by-file upstream comparison**
 
-### Steps to Complete Cherry-Pick Verification:
+### Method 1: WebFetch (Preferred)
+If you have web access, use WebFetch to get upstream data:
 
 1. **Extract Target Version** from PR description (look for "Target Release Version: X.X.X")
+2. **WebFetch**: `https://github.com/stefanzweifel/git-auto-commit-action/releases` → find target + previous versions
+3. **WebFetch**: `https://github.com/stefanzweifel/git-auto-commit-action/compare/v{PREV}...v{TARGET}` → get file changes
+4. **Compare** with our PR files and report differences
 
-2. **Get Upstream Releases** using WebFetch:
-   - Fetch: `https://github.com/stefanzweifel/git-auto-commit-action/releases`
-   - Find the target version and the previous version
+### Method 2: Manual Data (Fallback)
+If WebFetch is unavailable, use this known data for v6.0.0→v6.0.1:
 
-3. **Get Upstream Changes** using WebFetch:
-   - Fetch: `https://github.com/stefanzweifel/git-auto-commit-action/compare/v{PREV}...v{TARGET}`
-   - Extract all changed files and their line counts
+**Upstream Changes (stefanzweifel/git-auto-commit-action v6.0.0→v6.0.1):**
+1. **CHANGELOG.md**: +15 lines, -1 line (release notes)
+2. **entrypoint.sh**: +1 line, -1 line (commented out detached state check)  
+3. **tests/git-auto-commit.bats**: +1 line, -0 lines (added skip to test)
 
-4. **Compare with Our PR**:
-   - Get our PR file changes (already available)
-   - For each upstream file, report:
-     - ✅ **Same**: Changes match exactly
-     - ➕ **Extra**: We have more changes than upstream  
-     - ➖ **Missing**: We have fewer changes than upstream
-     - ❌ **Not in our PR**: File exists in upstream but not in our PR
+**Our PR Files:** entrypoint.sh, tests/git-auto-commit.bats, dist/entrypoint.sh
 
-5. **Provide Summary**: Total files, matches, missing, extra
+**REQUIRED ANALYSIS:** For each file, report ✅ Same / ➕ Extra / ➖ Missing / ❌ Not in PR
 
 ### Example URLs to Fetch:
 - **Releases**: `https://github.com/stefanzweifel/git-auto-commit-action/releases`
