@@ -1,5 +1,7 @@
 Please review this pull request and provide comprehensive feedback.
 
+🚨 **IMPORTANT**: If this is a cherry-pick PR (title contains "Cherry-picked changes from upstream"), you MUST also perform the file-by-file upstream comparison section below after the general review.
+
 Keep following things in mind:
 
 - author name in package.json file should be step-security
@@ -29,10 +31,11 @@ Keep following things in mind:
 ## Upstream Repository
 - **Repository**: stefanzweifel/git-auto-commit-action
 
-## Cherry-pick Verification (Only for Cherry-pick PRs)
-**Only run this section if PR title is "chore: Cherry-picked changes from upstream"**
+## 🚨 MANDATORY: Cherry-pick Verification for Cherry-pick PRs
 
-For cherry-pick PRs, compare each file changed in upstream with our PR and report:
+**CRITICAL REQUIREMENT: If PR title contains "Cherry-picked changes from upstream" then you MUST perform this file-by-file comparison section. This is the primary purpose of this review.**
+
+For cherry-pick PRs, you MUST compare each file changed in upstream with our PR and report exact differences:
 
 1. **Extract Target Release Version** from PR description
 2. **Get ALL upstream files** and their changes  
