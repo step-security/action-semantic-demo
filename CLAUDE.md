@@ -32,67 +32,57 @@ Keep following things in mind:
 ## Upstream Repository
 - **Repository**: stefanzweifel/git-auto-commit-action
 
-## Simple File-by-File Comparison
+## 🚨 MANDATORY: Cherry-Pick Verification 
 
-For each file changed in upstream, compare with our PR and report:
+**CRITICAL: For cherry-pick PRs, you MUST fetch upstream data and compare file-by-file**
 
-1. **Extract Target Release Version** from PR description
-2. **Get ALL upstream files** and their changes  
-3. **Get ALL our PR files** and their changes
-4. **For each file, report**:
-   - ✅ **Same**: Changes match exactly
-   - ➕ **Extra**: We have more changes than upstream
-   - ➖ **Missing**: We have fewer changes than upstream
-   - ❌ **Not in our PR**: File exists in upstream but not in our PR
+### Steps to Complete Cherry-Pick Verification:
 
-### Commands
-```bash
-# Get target version
-gh pr view <PR_NUMBER> --json body | jq -r '.body' | grep "Target Release Version:" | sed 's/.*Target Release Version: *//'
+1. **Extract Target Version** from PR description (look for "Target Release Version: X.X.X")
 
-# Get upstream file list and changes
-gh api repos/stefanzweifel/git-auto-commit-action/compare/v{PREV}...v{TARGET} | jq '.files[] | {filename: .filename, additions: .additions, deletions: .deletions}'
+2. **Get Upstream Releases** using WebFetch:
+   - Fetch: `https://github.com/stefanzweifel/git-auto-commit-action/releases`
+   - Find the target version and the previous version
 
-# Get our PR file list and changes  
-gh pr view <PR_NUMBER> --json files | jq '.files[] | {filename: .filename, additions: .additions, deletions: .deletions}'
-```
+3. **Get Upstream Changes** using WebFetch:
+   - Fetch: `https://github.com/stefanzweifel/git-auto-commit-action/compare/v{PREV}...v{TARGET}`
+   - Extract all changed files and their line counts
 
-### Comment Template
+4. **Compare with Our PR**:
+   - Get our PR file changes (already available)
+   - For each upstream file, report:
+     - ✅ **Same**: Changes match exactly
+     - ➕ **Extra**: We have more changes than upstream  
+     - ➖ **Missing**: We have fewer changes than upstream
+     - ❌ **Not in our PR**: File exists in upstream but not in our PR
+
+5. **Provide Summary**: Total files, matches, missing, extra
+
+### Example URLs to Fetch:
+- **Releases**: `https://github.com/stefanzweifel/git-auto-commit-action/releases`
+- **Compare**: `https://github.com/stefanzweifel/git-auto-commit-action/compare/v6.0.0...v6.0.1`
+
+### Expected Output Format:
 ```markdown
-## File-by-File Comparison: v{TARGET}
+## Cherry-Pick Verification: v{TARGET}
 
-### All Files Analysis
+### Upstream Analysis
+**Target Version**: v{TARGET}  
+**Previous Version**: v{PREV}
+**Upstream Files Changed**: X files
 
-**file1.ext**
-- Upstream: +5 lines, -2 lines
-- Our PR: +5 lines, -2 lines
-- Status: ✅ **Same**
+### File-by-File Comparison
 
-**file2.ext** 
-- Upstream: +10 lines, -3 lines
-- Our PR: +12 lines, -3 lines  
-- Status: ➕ **Extra** (+2 lines more than upstream)
-
-**file3.ext**
-- Upstream: +8 lines, -4 lines
-- Our PR: +6 lines, -4 lines
-- Status: ➖ **Missing** (-2 lines less than upstream)
-
-**file4.ext**
-- Upstream: +15 lines, -1 line
-- Our PR: Not present
-- Status: ❌ **Not in our PR**
-
-**file5.ext**
-- Upstream: Not present  
-- Our PR: +3 lines, -1 line
-- Status: ⚠️ **Extra file** (not in upstream)
+**[filename]**
+- Upstream: +X lines, -Y lines
+- Our PR: +A lines, -B lines  
+- Status: ✅ Same / ➕ Extra / ➖ Missing / ❌ Not in our PR
 
 ### Summary
 - **Total upstream files**: X
 - **Same**: X files ✅
-- **Extra changes**: X files ➕  
-- **Missing changes**: X files ➖
 - **Missing files**: X files ❌
 - **Extra files**: X files ⚠️
+
+### Result: ✅ Complete / ❌ Incomplete cherry-pick
 ```
