@@ -11,6 +11,9 @@ on:
         description: "Specify a base branch"
         required: false
         default: "main"
+      working_directory:
+        required: false
+
   schedule:
     - cron: "0 0 * * 1"
 
