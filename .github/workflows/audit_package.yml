@@ -16,10 +16,11 @@ on:
 
 jobs:
   audit-fix:
-    uses: step-security/reusable-workflows/.github/workflows/audit_fix.yml@v1
+    uses: step-security/reusable-workflows/.github/workflows/audit_fix.yml@fix_Use-Audit-Fix-With-Mentioned-Directory
     with:
       force: ${{ inputs.force || false }}
       base_branch: ${{ inputs.base_branch || 'main' }}
+      working_directory: ${{ inputs.base_branch }}
 
 permissions:
   contents: write
