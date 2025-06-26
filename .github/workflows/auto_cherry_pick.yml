@@ -18,6 +18,6 @@ jobs:
   cherry-pick:
     uses: step-security/reusable-workflows/.github/workflows/auto_cherry_pick.yaml@v1
     with:
-      original-owner: "stefanzweifel"
-      repo-name: "git-auto-commit-action"
+      original-owner: "r-lib"
+      repo-name: "actions"
       base_branch: ${{ inputs.base_branch }}
