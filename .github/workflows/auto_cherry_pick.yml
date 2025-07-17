@@ -10,6 +10,8 @@ on:
       script:
         required: false
         default: "npm run all"
+    pull_request:
+      types: [opened, synchronize, labeled]
 
 permissions:
   contents: write
