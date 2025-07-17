@@ -11,19 +11,21 @@ on:
         description: "Specify a base branch"
         required: false
         default: "main"
-      working_directory:
+      script:
+        description: "Specify the build script to run"
         required: false
-
+        type: string
+        default: "npm run all"
   schedule:
     - cron: "0 0 * * 1"
 
 jobs:
   audit-fix:
-    uses: step-security/reusable-workflows/.github/workflows/audit_fix.yml@fix_Use-Audit-Fix-With-Mentioned-Directory
+    uses: step-security/reusable-workflows/.github/workflows/audit_fix.yml@v1
     with:
       force: ${{ inputs.force || false }}
       base_branch: ${{ inputs.base_branch || 'main' }}
-      working_directory: ${{ inputs.working_directory || '' }}
+      script: ${{ inputs.script || 'npm run all' }}
 
 permissions:
   contents: write

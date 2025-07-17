@@ -6,10 +6,11 @@ on:
       tag:
         description: "Tag for the release"
         required: true
-      working_directory:
-        description: "Working directories to run commands in (comma-separated, optional)"
+      script:
+        description: "Specify the build script to run"
         required: false
-        default: "setup-pandoc, setup-manifest, pr-push, check-r-package, pr-fetch"
+        type: string
+        default: "npm run all"
 
 permissions:
   contents: read
@@ -21,7 +22,7 @@ jobs:
       id-token: write
       contents: write
 
-    uses: step-security/reusable-workflows/.github/workflows/actions_release.yaml@fix_Use-Audit-Fix-With-Mentioned-Directory
+    uses: step-security/reusable-workflows/.github/workflows/actions_release.yaml@v1
     with:
-      tag: ${{ github.event.inputs.tag }}
-      working_directory: ${{ github.event.inputs.working_directory }}
+      tag: "${{ github.event.inputs.tag }}"
+      script: "${{ github.event.inputs.script }}"

@@ -1,0 +1,70 @@
+name: mise action
+description: Actions for working with mise runtime manager
+branding:
+  icon: arrow-down-circle
+  color: purple
+inputs:
+  version:
+    required: false
+    description: The version of mise to use. If not specified, will use the latest release.
+  mise_dir:
+    required: false
+    description: |
+      The directory that mise will be installed to, defaults to $HOME/.local/share/mise
+      Or $XDG_DATA_HOME/mise if $XDG_DATA_HOME is set.
+      Or $MISE_DATA_DIR if $MISE_DATA_DIR is set.
+  tool_versions:
+    required: false
+    description: If present, this value will be written to the .tool-versions file
+  mise_toml:
+    required: false
+    description: If present, this value will be written to the .mise.toml file
+  install:
+    required: false
+    default: "true"
+    description: if false, will not run `mise install`
+  install_args:
+    required: false
+    description: Arguments to pass to `mise install` such as "bun" to only install bun
+  install_dir:
+    required: false
+    description: deprecated
+  cache:
+    required: false
+    default: "true"
+    description: if false, action will not read or write to cache
+  cache_save:
+    required: false
+    default: "true"
+    description: if false, action will not write to cache
+  cache_key_prefix:
+    required: false
+    default: "mise-v0"
+    description: The prefix key to use for the cache, change this to invalidate the cache
+  experimental:
+    required: false
+    default: "false"
+    description: if true, will use experimental features
+  log_level:
+    required: false
+    default: "info"
+    description: The log level to use for the action
+  working_directory:
+    required: false
+    description: The directory that mise runs in
+  reshim:
+    required: false
+    default: "false"
+    description: if true, will run `mise reshim --all` after setting up mise
+  github_token:
+    required: false
+    description: |
+      GitHub token for API authentication to avoid rate limits when installing GitHub-hosted tools.
+      Defaults to the automatic GitHub token.
+    default: ${{ github.token }}
+outputs:
+  cache-hit:
+    description: A boolean value to indicate if a cache was hit.
+runs:
+  using: node20
+  main: dist/index.js

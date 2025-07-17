@@ -7,6 +7,9 @@ on:
         description: "Base branch to create the PR against"
         required: true
         default: "main"
+      script:
+        required: false
+        default: "npm run all"
 
 permissions:
   contents: write
@@ -16,8 +19,9 @@ permissions:
 
 jobs:
   cherry-pick:
-    uses: step-security/reusable-workflows/.github/workflows/auto_cherry_pick.yaml@v1
+    uses: step-security/reusable-workflows/.github/workflows/auto_cherry_pick.yaml@feature_Verify-Cherry-Pick
     with:
-      original-owner: "r-lib"
-      repo-name: "actions"
+      original-owner: "jdx"
+      repo-name: "mise-action"
       base_branch: ${{ inputs.base_branch }}
+      script: ${{ inputs.script }}
