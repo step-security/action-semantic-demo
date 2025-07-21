@@ -25,7 +25,7 @@ permissions:
 
 jobs:
   cherry-pick:
-    uses: step-security/reusable-workflows/.github/workflows/auto_cherry_pick.yaml@848d8371c14bc8bf4950f596d51aebe30a3690a1
+    uses: step-security/reusable-workflows/.github/workflows/auto_cherry_pick.yaml@feature/verify-cherry-pick
     with:
       original-owner: "jdx"
       repo-name: "mise-action"
