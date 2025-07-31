@@ -7,15 +7,13 @@ on:
         description: "Base branch to create the PR against"
         required: true
         default: "main"
-      script:
-        required: false
-        default: "npm run all"
       mode:
         description: "Run mode: cherry-pick or verify"
         required: false
         default: "cherry-pick"
+
   pull_request:
-    types: [opened, synchronize, labeled]
+    types: [labeled]
 
 permissions:
   contents: write
@@ -27,8 +25,7 @@ jobs:
   cherry-pick:
     uses: step-security/reusable-workflows/.github/workflows/auto_cherry_pick.yaml@feature/verify-cherry-pick
     with:
-      original-owner: "jdx"
-      repo-name: "mise-action"
-      base_branch: ${{ inputs.base_branch }}
-      script: ${{ inputs.script }}
+      original-owner: "google-github-actions"
+      repo-name: "auth"
+      base_branch: ${{ inputs.base_branch || 'main' }}
       mode: ${{ github.event_name == 'pull_request' && contains(fromJson(toJson(github.event.pull_request.labels)).*.name, 'review-required') && 'verify' || (github.event_name == 'workflow_dispatch' && inputs.mode || '') }}
