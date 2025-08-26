@@ -70001,6 +70001,11 @@ async function run() {
             }
         }
         await miseLs();
+        const loadEnv = core.getBooleanInput('env');
+        if (loadEnv) {
+            const output = await exec.getExecOutput('mise', ['env', '--dotenv']);
+            fs.appendFileSync(process.env.GITHUB_ENV, output.stdout);
+        }
     }
     catch (err) {
         if (err instanceof Error)
