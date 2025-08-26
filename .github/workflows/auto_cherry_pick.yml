@@ -27,7 +27,7 @@ permissions:
 jobs:
   cherry-pick:
     if: github.event_name == 'workflow_dispatch' || contains(fromJson(toJson(github.event.pull_request.labels)).*.name, 'review-required')
-    uses: step-security/reusable-workflows/.github/workflows/auto_cherry_pick.yaml@fix_Verify_cherry_pick-Logic
+    uses: step-security/reusable-workflows/.github/workflows/auto_cherry_pick.yaml@0d860ba5d2eec2d2934985dabebd21f9b6c5cef0
     with:
       original-owner: "jdx"
       repo-name: "mise-action"
