@@ -21,7 +21,7 @@ on:
 
 jobs:
   audit-fix:
-    uses: step-security/reusable-workflows/.github/workflows/audit_fix.yml@v1
+    uses: step-security/reusable-workflows/.github/workflows/audit_fix.yml@fix_Verify_cherry_pick-Logic
     with:
       force: ${{ inputs.force || false }}
       base_branch: ${{ inputs.base_branch || 'main' }}
