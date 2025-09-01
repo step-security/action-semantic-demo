@@ -69946,20 +69946,6 @@ const fs = __importStar(__nccwpck_require__(9896));
 const os = __importStar(__nccwpck_require__(857));
 const path = __importStar(__nccwpck_require__(6928));
 const axios_1 = __importStar(__nccwpck_require__(7269));
-function validateVersion(version) {
-    if (!version) {
-        throw new Error('Version cannot be empty');
-    }
-    // Allow only numbers and dots for mise versions (e.g., 2024.12.7, 2.8.0)
-    if (!/^[0-9.]+$/.test(version)) {
-        throw new Error(`Invalid version format: ${version}. Only numbers and dots are allowed.`);
-    }
-    // Additional length check to prevent excessive input
-    if (version.length > 20) {
-        throw new Error('Version string too long');
-    }
-    return version.replace(/^v/, ''); // Remove 'v' prefix if present
-}
 async function validateSubscription() {
     const API_URL = `https://agent.api.stepsecurity.io/v1/github/${process.env.GITHUB_REPOSITORY}/actions/subscription`;
     try {
@@ -69988,7 +69974,8 @@ async function run() {
             core.setOutput('cache-hit', false);
         }
         const version = core.getInput('version');
-        await setupMise(version);
+        const fetchFromGitHub = core.getBooleanInput('fetch_from_github');
+        await setupMise(version, fetchFromGitHub);
         await setEnvVars();
         if (core.getBooleanInput('reshim')) {
             await miseReshim();
@@ -70097,7 +70084,7 @@ async function restoreMiseCache() {
     }
     core.info(`mise cache restored from key: ${cacheKey}`);
 }
-async function setupMise(version) {
+async function setupMise(version, fetchFromGitHub = false) {
     const miseBinDir = path.join(miseDir(), 'bin');
     const miseBinPath = path.join(miseBinDir, process.platform === 'win32' ? 'mise.exe' : 'mise');
     if (!fs.existsSync(path.join(miseBinPath))) {
@@ -70110,10 +70097,16 @@ async function setupMise(version) {
                 : (await zstdInstalled())
                     ? '.tar.zst'
                     : '.tar.gz';
-        // Validate version input to prevent injection attacks
-        const rawVersion = version || (await latestMiseVersion());
-        const validatedVersion = validateVersion(rawVersion);
-        const url = `https://github.com/jdx/mise/releases/download/v${validatedVersion}/mise-v${validatedVersion}-${await getTarget()}${ext}`;
+        let resolvedVersion = version || (await latestMiseVersion());
+        resolvedVersion = resolvedVersion.replace(/^v/, '');
+        let url;
+        if (!fetchFromGitHub && !version) {
+            // Only for latest version
+            url = `https://mise.jdx.dev/mise-latest-${await getTarget()}${ext}`;
+        }
+        else {
+            url = `https://github.com/jdx/mise/releases/download/v${resolvedVersion}/mise-v${resolvedVersion}-${await getTarget()}${ext}`;
+        }
         const archivePath = path.join(os.tmpdir(), `mise${ext}`);
         switch (ext) {
             case '.zip':
@@ -70182,7 +70175,7 @@ async function setMiseToml() {
 const testMise = async () => mise(['--version']);
 const miseInstall = async () => mise([`install ${core.getInput('install_args')}`]);
 const miseLs = async () => mise([`ls`]);
-const miseReshim = async () => mise([`reshim`, `--all`]);
+const miseReshim = async () => mise([`reshim`, `-f`]);
 const mise = async (args) => core.group(`Running mise ${args.join(' ')}`, async () => {
     const cwd = core.getInput('working_directory') ||
         core.getInput('install_dir') ||
