@@ -6,6 +6,6 @@ updates:
       interval: daily
 
   - package-ecosystem: npm
-    directory: /
+    directory: /sources
     schedule:
       interval: daily

@@ -1,4 +1,4 @@
-name: NPM Audit Fix Run
+name: Yarn Audit Fix Run
 
 on:
   workflow_dispatch:
@@ -12,20 +12,27 @@ on:
         required: false
         default: "main"
       script:
-        description: "Specify the build script to run"
+        description: "Specify a script to run after audit fix"
+        required: false
+        default: "./build build" 
+      node_version:
+        description: "Specify Node.js version (e.g., '18', '20', 'lts/*')"
         required: false
         type: string
-        default: "npm run all"
+        default: "24"
+
   schedule:
     - cron: "0 0 * * 1"
 
 jobs:
   audit-fix:
-    uses: step-security/reusable-workflows/.github/workflows/audit_fix.yml@fix_Verify_cherry_pick-Logic
+    uses: step-security/reusable-workflows/.github/workflows/audit_fix.yml@v1
     with:
       force: ${{ inputs.force || false }}
       base_branch: ${{ inputs.base_branch || 'main' }}
-      script: ${{ inputs.script || 'npm run all' }}
+      script: ${{github.event.inputs.script || './build build'}}
+      node_version: ${{ github.event.inputs.node_version || '24'}}
+
 
 permissions:
   contents: write

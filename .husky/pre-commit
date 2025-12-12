@@ -1,4 +1,0 @@
-# shellcheck disable=SC1091
-
-npm run all
-git add dist

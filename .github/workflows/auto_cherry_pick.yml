@@ -7,16 +7,17 @@ on:
         description: "Base branch to create the PR against"
         required: true
         default: "main"
-      script:
-        required: false
-        default: "npm run all"
       mode:
         description: "Run mode: cherry-pick or verify"
         required: false
         default: "cherry-pick"
+      script:
+        description: "Specify a script to run after audit fix"
+        required: false
+        default: "./build build" 
 
   pull_request:
-    types: [labeled, opened, synchronize]
+    types: [opened, synchronize, labeled]
 
 permissions:
   contents: write
@@ -27,10 +28,10 @@ permissions:
 jobs:
   cherry-pick:
     if: github.event_name == 'workflow_dispatch' || contains(fromJson(toJson(github.event.pull_request.labels)).*.name, 'review-required')
-    uses: step-security/reusable-workflows/.github/workflows/auto_cherry_pick.yaml@fix_Verify_cherry_pick-Logic
+    uses: step-security/reusable-workflows/.github/workflows/auto_cherry_pick.yaml@v1
     with:
-      original-owner: "jdx"
-      repo-name: "mise-action"
+      original-owner: "gradle"
+      repo-name: "actions"
       base_branch: ${{ inputs.base_branch }}
-      script: ${{ inputs.script }}
       mode: ${{ github.event_name == 'pull_request' && 'verify' || inputs.mode }}
+      script: ${{ inputs.script }}

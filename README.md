@@ -1,56 +1,98 @@
-# Example Workflow
+# GitHub Actions for Gradle builds
+
+This repository contains a set of GitHub Actions that are useful for building Gradle projects on GitHub.
+
+## The `setup-gradle` action
+
+The `setup-gradle` action can be used to configure Gradle for optimal execution on any platform supported by GitHub Actions.
+
+This replaces the previous `gradle/gradle-build-action`, which now delegates to this implementation.
+
+The recommended way to execute any Gradle build is with the help of the [Gradle Wrapper](https://docs.gradle.org/current/userguide/gradle_wrapper.html), and the examples assume that the Gradle Wrapper has been configured for the project. See [this example](docs/setup-gradle.md#build-with-a-specific-gradle-version) if your project doesn't use the Gradle Wrapper.
+
+### Example usage
 
 ```yaml
-name: test
+name: Build
+
 on:
-  pull_request:
-    branches:
-      - main
   push:
-    branches:
-      - main
+
 jobs:
-  lint:
+  build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: step-security/mise-action@v2
-        with:
-          version: 2024.10.0 # [default: latest] mise version to install
-          install: true # [default: true] run `mise install`
-          install_args: "bun" # [default: ""] additional arguments to `mise install`
-          cache: true # [default: true] cache mise using GitHub's cache
-          experimental: true # [default: false] enable experimental features
-          log_level: debug # [default: info] log level
-          # automatically write this .tool-versions file
-          tool_versions: |
-            shellcheck 0.9.0
-          # or, if you prefer .mise.toml format:
-          mise_toml: |
-            [tools]
-            shellcheck = "0.9.0"
-          working_directory: app # [default: .] directory to run mise in
-          reshim: false # [default: false] run `mise reshim --all`
-          github_token: ${{ secrets.GITHUB_TOKEN }} # [default: ${{ github.token }}] GitHub token for API authentication
-      - run: shellcheck scripts/*.sh
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: step-security/mise-action@v2
-      # .tool-versions will be read from repo root
-      - run: node ./my_app.js
+    - name: Checkout sources
+      uses: actions/checkout@v6
+    - name: Setup Java
+      uses: actions/setup-java@v5
+      with:
+        distribution: 'temurin'
+        java-version: 17
+    - name: Setup Gradle
+      uses: step-security/gradle-actions/setup-gradle@v5
+    - name: Build with Gradle
+      run: ./gradlew build
 ```
 
-## GitHub API Rate Limits
+See the [full action documentation](docs/setup-gradle.md) for more advanced usage scenarios.
 
-When installing tools hosted on GitHub (like `gh`, `node`, `bun`, etc.), mise needs to make API calls to GitHub's releases API. Without authentication, these calls are subject to GitHub's rate limit of 60 requests per hour, which can cause installation failures.
+## The `dependency-submission` action
+
+Generates and submits a dependency graph for a Gradle project, allowing GitHub to alert about reported vulnerabilities in your project dependencies.
+
+The following workflow will generate a dependency graph for a Gradle project and submit it immediately to the repository via the
+Dependency Submission API. For most projects, this default configuration should be all that you need.
+
+Simply add this as a new workflow file to your repository (eg `.github/workflows/dependency-submission.yml`).
 
 ```yaml
-- uses: step-security/mise-action@v2
-  with:
-    github_token: ${{ secrets.GITHUB_TOKEN }}
-    # your other configuration
+name: Dependency Submission
+
+on:
+  push:
+    branches: [ 'main' ]
+
+permissions:
+  contents: write
+
+jobs:
+  dependency-submission:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout sources
+      uses: actions/checkout@v6
+    - name: Setup Java
+      uses: actions/setup-java@v5
+      with:
+        distribution: 'temurin'
+        java-version: 17
+    - name: Generate and submit dependency graph
+      uses: step-security/gradle-actions/dependency-submission@v5
 ```
 
-**Note:** The action automatically uses `${{ github.token }}` as the default, so in most cases you don't need to explicitly provide it. However, if you encounter rate limit errors, make sure the token is being passed correctly.
+See the [full action documentation](docs/dependency-submission.md) for more advanced usage scenarios.
+
+## The `wrapper-validation` action
+
+The `wrapper-validation` action validates the checksums of _all_ [Gradle Wrapper](https://docs.gradle.org/current/userguide/gradle_wrapper.html) JAR files present in the repository and fails if any unknown Gradle Wrapper JAR files are found.
+
+### Example workflow
+
+```yaml
+name: "Validate Gradle Wrapper"
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  validation:
+    name: "Validation"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: step-security/gradle-actions/wrapper-validation@v5
+```
+
+See the [full action documentation](docs/wrapper-validation.md) for more advanced usage scenarios.
