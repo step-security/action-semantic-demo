@@ -32,7 +32,7 @@ jobs:
       id-token: write
       contents: write
 
-    uses: step-security/reusable-workflows/.github/workflows/actions_release.yaml@1b2cc3772c9ee0298699832a1629f98610f927d5
+    uses: step-security/reusable-workflows/.github/workflows/actions_release.yaml@fix/gradle-actions
     with:
       tag: "${{ github.event.inputs.tag }}"
       working_directory: ${{github.event.inputs.working_directory}}
