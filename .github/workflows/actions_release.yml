@@ -6,6 +6,11 @@ on:
       tag:
         description: "Tag for the release"
         required: true
+      working_directory:
+        description: "Working directories to run commands in (comma-separated, optional)"
+        required: false
+        type: string
+        default: sources
       setup_node:
         description: "Whether node.js should be setup or not"
         required: false
@@ -16,10 +21,6 @@ on:
         required: false
         type: string
         default: "24"
-      script:
-        description: "Specify a script to run after audit fix"
-        required: false
-        default: "./build install && ./build build" 
 
 permissions:
   contents: read
@@ -31,9 +32,9 @@ jobs:
       id-token: write
       contents: write
 
-    uses: step-security/reusable-workflows/.github/workflows/actions_release.yaml@fix/gradle-actions
+    uses: step-security/reusable-workflows/.github/workflows/actions_release.yaml@1b2cc3772c9ee0298699832a1629f98610f927d5
     with:
       tag: "${{ github.event.inputs.tag }}"
+      working_directory: ${{github.event.inputs.working_directory}}
       setup_node: ${{ github.event.inputs.setup_node == 'true' }}
       node_version: ${{ github.event.inputs.node_version}}
-      script: ${{ inputs.script || './build build' }}

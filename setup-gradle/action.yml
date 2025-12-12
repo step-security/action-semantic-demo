@@ -240,8 +240,8 @@ outputs:
 
 runs:
   using: 'node24'
-  main: '../dist/setup-gradle/main/index.js'
-  post: '../dist/setup-gradle/post/index.js'
+  main: '../sources/dist/setup-gradle/main/index.js'
+  post: '../sources/dist/setup-gradle/post/index.js'
   post-if: '!cancelled()'
 
 branding:

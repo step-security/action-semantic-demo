@@ -11,10 +11,11 @@ on:
         description: "Specify a base branch"
         required: false
         default: "main"
-      script:
-        description: "Specify a script to run after audit fix"
+      working_directory:
+        description: "Working directories to run commands in (comma-separated, optional)"
         required: false
-        default: "./build install && ./build build"
+        type: string
+        default: sources
       node_version:
         description: "Specify Node.js version (e.g., '18', '20', 'lts/*')"
         required: false
@@ -30,7 +31,7 @@ jobs:
     with:
       force: ${{ inputs.force || false }}
       base_branch: ${{ inputs.base_branch || 'main' }}
-      script: ${{github.event.inputs.script || './build build'}}
+      working_directory: ${{github.event.inputs.working_directory || 'sources'}}
       node_version: ${{ github.event.inputs.node_version || '24'}}
 
 

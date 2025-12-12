@@ -22,7 +22,7 @@ outputs:
 
 runs:
   using: 'node24'
-  main: '../dist/wrapper-validation/main/index.js'
+  main: '../sources/dist/wrapper-validation/main/index.js'
 
 branding:
   icon: 'shield'

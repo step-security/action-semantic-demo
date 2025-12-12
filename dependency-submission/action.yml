@@ -223,8 +223,8 @@ outputs:
 
 runs:
   using: 'node24'
-  main: '../dist/dependency-submission/main/index.js'
-  post: '../dist/dependency-submission/post/index.js'
+  main: '../sources/dist/dependency-submission/main/index.js'
+  post: '../sources/dist/dependency-submission/post/index.js'
 
 branding:
   icon: 'box'
