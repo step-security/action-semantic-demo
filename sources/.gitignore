@@ -101,6 +101,3 @@ __tests__/runner/*
 # IntelliJ IDEA config files
 .idea/
 *.iml
-
-# Local 'dist' directory within 'sources'. This is copied to ../dist by CI.
-dist/
