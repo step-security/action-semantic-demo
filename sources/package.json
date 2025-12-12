@@ -49,7 +49,7 @@
     "semver": "7.7.3",
     "string-argv": "0.3.2",
     "unhomoglyph": "1.0.6",
-    "which": "5.0.0"
+    "which": "6.0.0"
   },
   "devDependencies": {
     "@gradle-tech/develocity-agent": "2.0.2",
