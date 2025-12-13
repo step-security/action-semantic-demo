@@ -55,7 +55,7 @@
     "@gradle-tech/develocity-agent": "2.0.2",
     "@jest/globals": "30.2.0",
     "@types/jest": "30.0.0",
-    "@types/node": "24.10.0",
+    "@types/node": "25.0.1",
     "@types/semver": "7.7.1",
     "@types/unzipper": "0.10.11",
     "@types/which": "3.0.4",
