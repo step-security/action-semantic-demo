@@ -1,3 +1,4 @@
+
 name: Auto Cherry-Pick from Upstream
 
 on:
@@ -7,17 +8,14 @@ on:
         description: "Base branch to create the PR against"
         required: true
         default: "main"
-      mode:
-        description: "Run mode: cherry-pick or verify"
+      package_manager:
+        description: "Specify package manager (npm or yarn)"
         required: false
-        default: "cherry-pick"
+        default: "yarn"
       script:
         description: "Specify a script to run after audit fix"
         required: false
-        default: "./build build" 
-
-  pull_request:
-    types: [opened, synchronize, labeled]
+        default: "yarn build"
 
 permissions:
   contents: write
@@ -27,11 +25,10 @@ permissions:
 
 jobs:
   cherry-pick:
-    if: github.event_name == 'workflow_dispatch' || contains(fromJson(toJson(github.event.pull_request.labels)).*.name, 'review-required')
     uses: step-security/reusable-workflows/.github/workflows/auto_cherry_pick.yaml@v1
     with:
-      original-owner: "gradle"
-      repo-name: "actions"
+      original-owner: "changesets"
+      repo-name: "action"
       base_branch: ${{ inputs.base_branch }}
-      mode: ${{ github.event_name == 'pull_request' && 'verify' || inputs.mode }}
-      script: ${{ inputs.script }}
+      package_manager: "yarn"
+      script: ${{ inputs.script || 'yarn build' }}

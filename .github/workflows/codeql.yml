@@ -35,22 +35,22 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        language: ["java", "javascript", "typescript"]
+        language: ["javascript", "typescript"]
         # CodeQL supports [ $supported-codeql-languages ]
         # Learn more about CodeQL language support at https://aka.ms/codeql-docs/language-support
 
     steps:
       - name: Harden the runner (Audit all outbound calls)
-        uses: step-security/harden-runner@20cf305ff2072d973412fa9b1e3a4f227bda3c76 # v2.14.0
+        uses: step-security/harden-runner@0634a2670c59f64b4a01f0f96f84700a4088b9f0 # v2.12.0
         with:
           egress-policy: audit
 
       - name: Checkout repository
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       # Initializes the CodeQL tools for scanning.
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@bffd034ab1518ad839a542b8a7356e13a240e076 # v3.31.7
+        uses: github/codeql-action/init@ff0a06e83cb2de871e5a09832bc6a81e7276941f # v3.28.18
         with:
           languages: ${{ matrix.language }}
           # If you wish to specify custom queries, you can do so here or in a config file.
@@ -59,28 +59,8 @@ jobs:
 
       # Autobuild attempts to build any compiled languages  (C/C++, C#, or Java).
       # If this step fails, then you should remove it and run the build manually (see below)
-
-      - name: Build Java test samples
-        if: matrix.language == 'java'
-        run: |
-          # Build all Java/Gradle test samples
-          for sample_dir in .github/workflow-samples/*/; do
-            if [ -f "${sample_dir}gradlew" ] || [ -f "${sample_dir}build.gradle" ] || [ -f "${sample_dir}build.gradle.kts" ]; then
-              echo "Building sample in ${sample_dir}"
-              cd "${sample_dir}"
-              if [ -f "gradlew" ]; then
-                chmod +x gradlew
-                ./gradlew build -x test --no-daemon || true
-              fi
-              cd - > /dev/null
-            fi
-          done
-          
-      # Autobuild attempts to build any compiled languages  (C/C++, C#, or Java).
-      # If this step fails, then you should remove it and run the build manually (see below)
       - name: Autobuild
-        if: matrix.language != 'java'
-        uses: github/codeql-action/autobuild@bffd034ab1518ad839a542b8a7356e13a240e076 # v3.31.7
+        uses: github/codeql-action/autobuild@ff0a06e83cb2de871e5a09832bc6a81e7276941f # v3.28.18
 
       # ℹ️ Command-line programs to run using the OS shell.
       # 📚 See https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#jobsjob_idstepsrun
@@ -93,6 +73,6 @@ jobs:
       #   ./location_of_script_within_repo/buildscript.sh
 
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@bffd034ab1518ad839a542b8a7356e13a240e076 # v3.31.7
+        uses: github/codeql-action/analyze@ff0a06e83cb2de871e5a09832bc6a81e7276941f # v3.28.18
         with:
           category: "/language:${{matrix.language}}"
