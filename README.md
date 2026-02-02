@@ -1,334 +1,615 @@
-# GitHub Action for Dispatching Workflows
+# Authenticate to Google Cloud from GitHub Actions
 
-A **universal** action that supports dispatching workflows with either the `workflow_dispatch` or `repository_dispatch` event. Additionally, this action can be configured to **discover** the Run ID of a dispatched workflow through a **efficient** and **accurate** correlation algorithm.
+Forked from [google-github-actions/auth](https://github.com/google-github-actions/auth)
 
-The latter algorithm was designed as a workaround for a [technical limitation](https://github.com/orgs/community/discussions/9752#discussioncomment-1964203) that prevents the dispatch APIs from returning a Run ID.
+### Changes from the Original Action
+1. Add the credentials file to `$GIT_DIR/info/exclude` (see [Git documentation](https://git-scm.com/docs/gitignore))  
+   This prevents accidental check-ins of sensitive information.
 
-There was a need for this action as currently available actions...
+2. Disable persistent credential support  
+   The original action supports both identity federation and persistent credentials. We've disabled persistent credentials for enhanced security.
 
-- Support the `workflow_dispatch` or `repository_dispatch` event, **but not both**
-- Use Run ID extraction algorithms that are either **API-intensive** or **unreliable** on repositories that experience a high velocity of workflows
+---
 
-# Usage
+This GitHub Action authenticates to Google Cloud. It supports authentication via [Workload
+Identity Federation][wif].
 
-## Creating Dispatch Events
+Workload Identity Federation is recommended over Service Account Keys as it
+obviates the need to export a long-lived credential and establishes a trust
+delegation relationship between a particular GitHub Actions workflow invocation
+and permissions on Google Cloud. There are two ways to set up this GitHub
+Action to authenticate to Google Cloud:
 
-### `workflow_dispatch`
+1. [(Preferred) Direct Workload Identity Federation](#direct-wif)
+1. [Workload Identity Federation through a Service Account](#indirect-wif)
 
-```yaml
-steps:
-  - uses: step-security/dispatch-workflow@v2
-    id: workflow-dispatch
-    name: 'Dispatch Workflow using workflow_dispatch Method'
-    with:
-      dispatch-method: workflow_dispatch
-      repo: repository-name
-      owner: repository-owner
-      ref: refs/heads/main # or main
-      workflow: automation-test.yml # Or Workflow ID
-      token: ${{ secrets.TOKEN }} # GitHub Token With Relevant Permissions
-      workflow-inputs: |
-        {
-          "string-type": "placeholder",
-          "number-type": "1",           // Workaround for 'Number' types
-          "boolean-type": "true"        // Workaround for 'Boolean' types
-        }
-```
+> [!IMPORTANT]
+> The `gsutil` command will **not** use the credentials exported by this GitHub
+> Action. Customers should use `gcloud storage` instead.
 
-### `repository_dispatch`
+**This is not an officially supported Google product, and it is not covered by a
+Google Cloud support contract. To report bugs or request features in a Google
+Cloud product, please contact [Google Cloud
+support](https://cloud.google.com/support).**
 
-```yaml
-steps:
-  - uses: step-security/dispatch-workflow@v2
-    id: repository-dispatch
-    name: 'Dispatch Workflow using repository_dispatch Method'
-    with:
-      dispatch-method: repository_dispatch
-      repo: repository-name
-      owner: repository-owner
-      event-type: deploy # Event To Trigger From Workflow
-      token: ${{ secrets.TOKEN }} # GitHub Token With Relevant Permissions
-      workflow-inputs: |
-        {
-          "string-type": "placeholder",
-          "nested": {                    // Supports Nesting
-            "number-type": 1,            // Supports Native 'Number' types
-            "boolean-type": true         // Supports Native 'Boolean' types
-          }
-        }
-```
 
-## Receiving Dispatch Events
+## Prerequisites
 
-### `workflow_dispatch`
+-   Run the `actions/checkout@v4` step _before_ this action. Omitting the
+    checkout step or putting it after `auth` will cause future steps to be
+    unable to authenticate.
+
+-   To create binaries, containers, pull requests, or other releases, add the
+    following to your `.gitignore`, `.dockerignore` and similar files to prevent
+    accidentally committing credentials to your release artifact:
+
+    ```text
+    # Ignore generated credentials from step-security/google-github-auth
+    gha-creds-*.json
+    ```
+
+-   This action runs using Node 20. Use a [runner
+    version](https://github.com/actions/virtual-environments) that supports this
+    version of Node or newer.
+
+
+## Usage
 
 ```yaml
-# .github/workflows/automation-test.yml [refs/heads/main]
-name: Workflow Name
-on:
-  workflow_dispatch:
-    inputs:
-      string-type:
-        description: An input of type 'String'
-        required: true
-        type: string
-      number-type:
-        description: An input of type 'Number'
-        type: number
-      boolean-type:
-        description: An input of type 'Boolean'
-        type: boolean
-
 jobs:
-  test:
+  job_id:
+    # Any runner supporting Node 20 or newer
     runs-on: ubuntu-latest
+
+    # Add "id-token" with the intended permissions.
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+
     steps:
-      - name: Echo Inputs
-        run: |
-          echo "${{ inputs.string-type }}" # "placeholder"
-          if [[ "${{ inputs.number-type }}" -gt -1 ]]; then echo "🟢"; fi       # 🟢
-          if [[ "${{ inputs.boolean-type }}" == "true" ]]; then echo "🟢"; fi   # 🟢
+    - uses: 'actions/checkout@v4'
+
+    - uses: 'step-security/google-github-auth@v2'
+      with:
+        project_id: 'my-project'
+        workload_identity_provider: 'projects/123456789/locations/global/workloadIdentityPools/my-pool/providers/my-provider'
 ```
 
-### `repository_dispatch`
+> [!NOTE]
+>
+> Changing the `permissions` block may remove some default permissions. See the
+> [permissions documentation][github-perms] for more information.
 
-```yaml
-name: Workflow Name
-on:
-  repository_dispatch:
-    types:
-      - deploy
+For more usage options, see the [examples](docs/EXAMPLES.md).
 
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Echo Inputs
-        run: |
-          echo "${{ github.event.client_payload.string-type }}" # "placeholder"
-          if [[ "${{ github.event.client_payload.nested.number-type }}" -gt -1 ]]; then echo "🟢"; fi      # 🟢
-          if [[ "${{ github.event.client_payload.nested.boolean-type }}" == "true" ]]; then echo "🟢"; fi  # 🟢
-```
 
-## Discovery
+## Inputs
 
-One of the drawbacks with both dispatch methods, is that they do not natively return a Run ID that allows us to query for the status of our dispatched workflow. This technical limitation is discussed more in-depth in this [community discussion](https://github.com/orgs/community/discussions/9752#discussioncomment-1964203). We can work around this by encorporating a **Distinct ID** into our dispatch event. We then have the ability to **discover** the dispatched workflow, from all workflow runs, by correlating it to the **Distinct ID**.
+### Inputs: Workload Identity Federation
 
-This functionality is **disabled by default**, but can be enabled with the `discover: true` configuration. The receiving workflow must then be modified appropriated to intercept the **Distinct ID**.
+> [!WARNING]
+>
+> This option is [not supported by Firebase Admin
+> SDK](https://github.com/firebase/firebase-admin-node/issues/1377). Use Service
+> Account Key JSON authentication instead.
 
-### Creating Dispatch Events with Discovery
+> [!WARNING]
+>
+> As of the time of this writing, the GitHub OIDC token expires in 5 minutes,
+> which means any derived credentials also expire in 5 minutes.
 
-```yaml
-steps:
-  - uses: step-security/dispatch-workflow@v2
-    id: dispatch-with-discovery
-    name: "Dispatch Workflow With Discovery"
-    with:
-      ...
-      discover: true
-  - id: echo-run-id-url
-    name: "Echo Run ID and Run URL"
-    run: |
-      echo "${{ steps.dispatch-with-discovery.outputs.run-id }}"
-      echo "${{ steps.dispatch-with-discovery.outputs.run-url }}"
-```
 
-### Receiving Events with Discovery
+The following inputs are for _authenticating_ to Google Cloud via Workload
+Identity Federation.
 
-On September 26, 2022, GitHub introduced the ability to set [dynamic names for workflow runs](https://github.blog/changelog/2022-09-26-github-actions-dynamic-names-for-workflow-runs/). The new `run-name` attribute will accept expressions, thus allowing us to inject the **Distinct ID** into the queryable view.
+-   `workload_identity_provider`: (Required) The full identifier of the Workload
+    Identity Provider, including the project number, pool name, and provider
+    name. If provided, this must be the full identifier which includes all
+    parts:
 
-The expression to expose the **Distinct ID** in the `run-name` depends on what dispatch method you are using. The included expressions have been configured in a way to return a placeholder value `N/A` if a **Distinct ID** is not available.
+    ```text
+    projects/123456789/locations/global/workloadIdentityPools/my-pool/providers/my-provider
+    ```
 
-#### `workflow_dispatch`
+-   `service_account`: (Optional) Email address or unique identifier of the
+    Google Cloud service account for which to impersonate and generate
+    credentials. For example:
 
-```yaml
-name: Workflow Name
-run-name: Workflow Name [${{ inputs.distinct_id && inputs.distinct_id || 'N/A' }}]
+    ```text
+    my-service-account@my-project.iam.gserviceaccount.com
+    ```
 
-on:
-  workflow_dispatch:
-    inputs:
-      distinct_id:
-        description: 'Distinct ID'
-        required: false
-```
+    Without this input, the GitHub Action will use [Direct Workload Identity
+    Federation](#direct-wif). If this input is provided, the GitHub Action will use
+    [Workload Identity Federation through a Service Account](#indirect-wif).
 
-#### `repository_dispatch`
+-   `audience`: (Optional) The value for the audience (`aud`) parameter in the
+    generated GitHub Actions OIDC token. This value defaults to the value of
+    `workload_identity_provider`, which is also the default value Google Cloud
+    expects for the audience parameter on the token.
 
-```yaml
-name: Workflow Name
-run-name: >
-  Workflow Name [${{
-    github.event.client_payload.distinct_id &&
-    github.event.client_payload.distinct_id || 'N/A' }}]
+### Inputs: Generating OAuth 2.0 access tokens
 
-on:
-  repository_dispatch:
-    types:
-      - deploy
-```
+The following inputs are for _generating_ OAuth 2.0 access tokens for
+authenticating to Google Cloud as an output for use in future steps in the
+workflow. These options only apply to access tokens generated by this action. By
+default, this action does not generate any tokens.
 
-# Permissions
+-   `service_account`: (Required) Email address or unique identifier of the
+    Google Cloud service account for which to generate the access token. For
+    example:
 
-Dispatching a Workflow requires an authenticated `GITHUB_TOKEN`. The required permissions for this `GITHUB_TOKEN` depends on the following factors...
+    ```text
+    my-service-account@my-project.iam.gserviceaccount.com
+    ```
 
-- **Dispatch Method**: `repository_dispatch`, `workflow_dispatch`
-- **Discovery**: `true`, `false`
-- **Repository Visiblity**: Private, Public
+-   `token_format`: (Required) This value must be `"access_token"` to generate
+    OAuth 2.0 access tokens.
 
-## Generating a `GITHUB_TOKEN`
+-   `access_token_lifetime`: (Optional) Desired lifetime duration of the access
+    token, in seconds. This must be specified as the number of seconds with a
+    trailing "s" (e.g. 30s). The default value is 1 hour (3600s). The maximum
+    value is 1 hour, unless the
+    `constraints/iam.allowServiceAccountCredentialLifetimeExtension`
+    organization policy is enabled, in which case the maximum value is 12 hours.
 
-There are also multiple methods of generating `GITHUB_TOKEN`. If you are dispatching a workflow from the **current repository**, a **GitHub Actions Token** would be the most secure option. If you are dispatching a workflow to a **remote repository**, We would personally recommend a **GitHub App Token**. GitHub App Tokens are ephemeral (valid for 1 hour) and have fine grained access control over permissions and repositories. Additionally they are not bound to a particular developers identity, unlike a Personal Access Token.
+-   `access_token_scopes`: (Optional) List of OAuth 2.0 access scopes to be
+    included in the generated token. This is only valid when "token_format" is
+    "access_token". The default value is:
 
-- Fine Grained Tokens
-  - [GitHub Actions Token](https://docs.github.com/en/actions/security-guides/automatic-token-authentication)
-  - [GitHub App Token](https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/making-authenticated-api-requests-with-a-github-app-in-a-github-actions-workflow)
-  - [Personal Access Token 🆕](https://github.blog/2022-10-18-introducing-fine-grained-personal-access-tokens-for-github/)
-- Personal Access Tokens (Classic)
-  - We would **strongly** advise using this as they are not as secure as it's [fine-grained replacement](https://github.blog/2022-10-18-introducing-fine-grained-personal-access-tokens-for-github/) and can potentially be configured without an expiry time.
+    ```text
+    https://www.googleapis.com/auth/cloud-platform
+    ```
 
-The below table shows the neccessary permissions for all the unique combinations of these factors. If using a Fine Grained Token, ensure that the permissions correspond to the repository that contains the workflow you are attempting to dispatch.
+    This can be specified as a comma-separated or newline-separated list.
 
-| Mode                                     | Fine Grained Tokens                 | Personal Access Token (Classic)         |
-| ---------------------------------------- | ----------------------------------- | --------------------------------------- |
-| `repository_dispatch`                    | `contents: write`                   | Private: `repo` / Public: `public_repo` |
-| `repository_dispatch` + `discover: true` | `contents: write` + `actions: read` | Private: `repo` / Public: `public_repo` |
-| `worflow_dispatch`                       | `actions: write`                    | Private: `repo` / Public: `public_repo` |
-| `workflow_dispatch` + `discover: true`   | `actions: write`                    | Private: `repo` / Public: `public_repo` |
+-   `access_token_subject`: (Optional) Email address of a user to impersonate
+    for [Domain-Wide Delegation][dwd]. Access tokens created for Domain-Wide
+    Delegation cannot have a lifetime beyond 1 hour, even if the
+    `constraints/iam.allowServiceAccountCredentialLifetimeExtension`
+    organization policy is enabled.
 
-# Inputs
+    In order to support Domain-Wide Delegation via Workload Identity Federation,
+    you must grant the external identity ("principalSet")
+    `roles/iam.serviceAccountTokenCreator` in addition to
+    `roles/iam.workloadIdentityUser`. The default Workload Identity setup will
+    only grant the latter role. If you want to use this GitHub Action with
+    Domain-Wide Delegation, you must manually add the "Service Account Token
+    Creator" role onto the external identity.
 
-| Name                | Description                                                                                                                           | Required      | Default |
-| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------- | ------------- | ------- |
-| `dispatch-method`   | The method that will be used for dispatching GitHub workflows: `repository_dispatch`, `workflow_dispatch`                             | `true`        |         |
-| `repo`              | Repository of the workflow to dispatch                                                                                                | `true`        |         |
-| `owner`             | Owner of the given repository                                                                                                         | `true`        |         |
-| `token`             | GitHub API token for making API requests                                                                                              | `true`        |         |
-| `ref`               | If the selected dispatch method is `workflow_dispatch`, the git reference for the workflow. The reference can be a branch or tag name | `conditional` |         |
-| `workflow`          | If the selected dispatch method is `workflow_dispatch`, the ID or the workflow file name to dispatch                                  | `conditional` |         |
-| `event-type`        | If the selected dispatch method is `repository_dispatch`, what event type will be triggered in the repository.                        | `conditional` |         |
-| `workflow-inputs`   | A JSON object that contains extra information that will be provided to the dispatch call                                              | `false`       | `'{}'`  |
-| `discover`          | A flag to enable the discovery of the Run ID from the dispatched workflow                                                             | `false`       | `false` |
-| `starting-delay-ms` | The delay, in milliseconds, before executing the function for the first time.                                                         | `false`       | `200`   |
-| `max-attempts`      | The maximum number of times to attempt read-only GitHub API requests.                                                                 | `false`       | `5`     |
-| `time-multiple`     | The `starting-delay-ms` is multiplied by the `time-multiple` to increase the delay between reattempts.                                | `false`       | `2`     |
+    You will also need to customize the `access_token_scopes` value to
+    correspond to the OAuth scopes required for the API(s) you will access.
 
-# Outputs
+### Inputs: Generating ID tokens
 
-By default, this GitHub Action has no outputs. However, when discovery mode is **enabled**, the Run ID and Run URL become exposed as outputs. With the Run ID, you can create some powerful automation where the parent workflow can wait for the status of the child workflow using the [`codex-/await-remote-run`](https://github.com/codex-/await-remote-run) GitHub Action.
+The following inputs are for _generating_ ID tokens for authenticating to Google
+Cloud as an output for use in future steps in the workflow. These options only
+apply to ID tokens generated by this action. By default, this action does not
+generate any tokens.
 
-| Name      | Description                                    |
-| --------- | ---------------------------------------------- |
-| `run-id`  | The Run ID of the workflow that was dispatched |
-| `run-url` | The URL of the workflow that was dispatched    |
+> [!CAUTION]
+>
+> ID Tokens have a maximum lifetime of 10 minutes. This value cannot be changed.
 
-```yaml
-steps:
-  - uses: step-security/dispatch-workflow@v2
-    id: wait-repository-dispatch
-    name: 'Dispatch Using repository_dispatch Method And Wait For Run-ID'
-    with:
-      dispatch-method: 'repository_dispatch'
-      event-type: 'deploy'
-      repo: ${{ github.event.repository.name }}
-      owner: ${{ github.repository_owner }}
-      token: ${{ secrets.GITHUB_TOKEN }}
-      discover: true
-  - name: Await Run ID ${{ steps.wait-repository-dispatch.outputs.run-id }}
-    uses: codex-/await-remote-run@v1
-    with:
-      token: ${{ secrets.GITHUB_TOKEN }}
-      repo: ${{ github.event.repository.name }}
-      owner: ${{ github.repository_owner }}
-      run_id: ${{ steps.wait-repository-dispatch.outputs.run-id }}
-      run_timeout_seconds: 300 # Optional
-      poll_interval_ms: 5000 # Optional
-```
+-   `service_account`: (Required) Email address or unique identifier of the
+    Google Cloud service account for which to generate the ID token. For
+    example:
 
-# Workflow Inputs
+    ```text
+    my-service-account@my-project.iam.gserviceaccount.com
+    ```
 
-This action supports the ability to provide workflow inputs for both the `repository_dispatch` and `workflow_dispatch` method. However, both methods have their unique limitations.
+-   `token_format`: This value must be `"id_token"` to generate ID tokens.
 
-## `repository_dispatch`
+-   `id_token_audience`: (Required) The audience for the generated ID Token.
 
-> Source: [peter-evans/repository-dispatch](https://github.com/peter-evans/repository-dispatch#client-payload) # Client Payload
+-   `id_token_include_email`: (Optional) Optional parameter of whether to
+    include the service account email in the generated token. If true, the token
+    will contain "email" and "email_verified" claims. This is only valid when
+    "token_format" is "id_token". The default value is false.
 
-The [Create a repository dispatch event](https://docs.github.com/en/free-pro-team@latest/rest/repos/repos?apiVersion=2022-11-28#create-a-repository-dispatch-event) API call allows a maximum of **10** top-level properties in the workflow inputs JSON. If you use more than that you will see an error message like the following.
+### Inputs: Miscellaneous
 
-```
-No more than 10 properties are allowed; 14 were supplied.
-```
+The following inputs are for controlling the behavior of this GitHub Actions,
+regardless of the authentication mechanism.
 
-For example, this payload will fail because the `github` object has more than **10** top-level properties.
+-   `project_id`: (Optional) Custom project ID to use for authentication and
+    exporting into other steps. If unspecified, we will attempt to extract the
+    project ID from the Workload Identity Provider, Service Account email, or
+    the Service Account Key JSON. If this fails, you will need to specify the
+    project ID manually.
 
-```yaml
-workflow-inputs: ${{ toJson(github) }}
-```
+-   `create_credentials_file`: (Optional) If true, the action will securely
+    generate a credentials file which can be used for authentication via gcloud
+    and Google Cloud SDKs in other steps in the workflow. The default is true.
 
-A simple work-around is that you can simply wrap the payload in a single top-level property. The following payload will succeed.
+    The credentials file is exported into `$GITHUB_WORKSPACE`, which makes it
+    available to all future steps and filesystems (including Docker-based GitHub
+    Actions). The file is automatically removed at the end of the job via a post
+    action. In order to use exported credentials, you **must** add the
+    `actions/checkout` step before calling `auth`. This is due to how GitHub
+    Actions creates `$GITHUB_WORKSPACE`:
 
-```yaml
-workflow-inputs: '{"github": ${{ toJson(github) }}}'
-```
+     ```yaml
+     jobs:
+      job_id:
+        steps:
+        - uses: 'actions/checkout@v4' # Must come first!
+        - uses: 'step-security/google-github-auth@v2'
+     ```
 
-Additionally, there is a limitation on the total data size of the client-payload. A very large payload may result in the following error
+-   `export_environment_variables`: (Optional) If true, the action will export
+    common environment variables which are known to be consumed by popular
+    downstream libraries and tools, including:
 
-```
-client_payload is too large
-```
+    -   `CLOUDSDK_PROJECT`
+    -   `CLOUDSDK_CORE_PROJECT`
+    -   `GCP_PROJECT`
+    -   `GCLOUD_PROJECT`
+    -   `GOOGLE_CLOUD_PROJECT`
 
-## `workflow_dispatch`
+    If `create_credentials_file` is true, additional environment variables are
+    exported:
 
-The [Create a workflow dispatch event](https://docs.github.com/en/rest/actions/workflows?apiVersion=2022-11-28#create-a-workflow-dispatch-event) API call also sets the maximum number of top-level properties in the workflow inputs JSON to **10**. Any default properties configured in the workflow file will be considered towards this count when inputs are omitted.
+    -   `CLOUDSDK_AUTH_CREDENTIAL_FILE_OVERRIDE`
+    -   `GOOGLE_APPLICATION_CREDENTIALS`
+    -   `GOOGLE_GHA_CREDS_PATH`
 
-An additional requirement is that all top-level properties **must** be a `string`. Any inputs represented as a `number` or `boolean` will get **rejected**. Therefore values of these
-types must be wrapped in **quotes** to successfully dispatch the workflow.
+    If false, the action will not export any environment variables, meaning
+    future steps are unlikely to be automatically authenticated to Google Cloud.
+    The default value is true.
 
-```yaml
-# Invalid ❌
-  - uses: step-security/dispatch-workflow@v2
-    id: workflow-dispatch
-    name: 'Dispatch Using workflow_dispatch Method'
-    with:
-      dispatch-method: 'workflow_dispatch'
-      ...
-      workflow-inputs: |
-        {
-          "foo": true,
-          "bar: 1
-        }
+-   `delegates`: (Optional) List of additional service account emails or unique
+    identities to use for impersonation in the chain. By default there are no
+    delegates. This can be specified as a comma-separated or newline-separated
+    list.
 
-# Valid 🟢
-  - uses: step-security/dispatch-workflow@v2
-    id: workflow-dispatch
-    name: 'Dispatch Using workflow_dispatch Method'
-    with:
-      dispatch-method: 'workflow_dispatch'
-      ...
-      workflow-inputs: |
-        {
-          "foo": "true",
-          "bar: "1"
-        }
-```
+-   `universe`: (Optional) The Google Cloud universe to use for constructing API
+    endpoints. The default universe is "googleapis.com", which corresponds to
+    https://cloud.google.com. Trusted Partner Cloud and Google Distributed
+    Hosted Cloud should set this to their universe address.
 
-# Advanced Usage
+    You can also override individual API endpoints by setting the environment
+    variable `GHA_ENDPOINT_OVERRIDE_<endpoint>` where endpoint is the API
+    endpoint to override. This only applies to the `auth` action and does not
+    persist to other steps. For example:
 
-## Exponential Backoff
+    ```yaml
+    env:
+      GHA_ENDPOINT_OVERRIDE_oauth2: 'https://oauth2.myapi.endpoint/v1'
+    ```
 
-When interacting with the GitHub REST API, it's beneficial to handle potential flakiness by employing exponential backoff. This action allows users to customize this behavior through optional parameters, although the default values work well for most scenarios.
+-   `request_reason`: (Optional) An optional Reason Request [System
+    Parameter](https://cloud.google.com/apis/docs/system-parameters) for each
+    API call made by the GitHub Action. This will inject the
+    "X-Goog-Request-Reason" HTTP header, which will provide user-supplied
+    information in Google Cloud audit logs.
 
-- `starting-delay-ms`: The initial delay, in milliseconds, before the first API call attempt.
-- `max-attempts`: The maximum number of times to attempt read-only GitHub API requests.
-- `time-multiple`: The factor by which the `starting-delay-ms` is multiplied for each reattempt, influencing the delay duration.
+-   `cleanup_credentials`: (Optional) If true, the action will remove any
+    created credentials from the filesystem upon completion. This only applies
+    if "create_credentials_file" is true. The default is true.
 
-```yaml
-  - uses: step-security/dispatch-workflow@v2
-    id: custom-backoff
-    name: 'Dispatch with custom exponential backoff parameters'
-    with:
-      ...
-      starting-delay-ms: 150
-      max-attempts: 3
-      time-multiple: 1.5
-```
+## Outputs
+
+-   `project_id`: Provided or extracted value for the Google Cloud project ID.
+
+-   `credentials_file_path`: Path on the local filesystem where the generated
+    credentials file resides. This is only available if
+    "create_credentials_file" was set to true.
+
+-   `auth_token`: The Google Cloud federated token (for Workload Identity
+    Federation) or self-signed JWT (for a Service Account Key JSON). This output
+    is always available.
+
+-   `access_token`: The Google Cloud access token for calling other Google Cloud
+    APIs. This is only available when "token_format" is "access_token".
+
+-   `id_token`: The Google Cloud ID token. This is only available when
+    "token_format" is "id_token".
+
+
+<a id="setup"></a>
+## Setup
+
+This section describes the three configuration options:
+
+1. [(Preferred) Direct Workload Identity Federation](#direct-wif)
+1. [Workload Identity Federation through a Service Account](#indirect-wif)
+1. [Service Account Key JSON](#sake)
+
+> [!IMPORTANT]
+>
+> It can take up to 5 minutes for Workload Identity Pools, Workload Identity
+> Providers, and IAM permissions to propagate. Please wait at least five minutes
+> and follow all [Troubleshooting steps](docs/TROUBLESHOOTING.md) before opening
+> an issue.
+
+
+<a name="direct-wif" id="direct-wif"></a>
+
+### (Preferred) Direct Workload Identity Federation
+
+In this setup, the Workload Identity Pool has direct IAM permissions on Google
+Cloud resources; there are no intermediate service accounts or keys. This is
+preferred since it directly authenticates GitHub Actions to Google Cloud without
+a proxy resource. However, not all Google Cloud resources support `principalSet`
+identities, and the resulting token has a maximum lifetime of 10 minutes. Please
+see the documentation for your Google Cloud service for more information.
+
+[![Authenticate to Google Cloud from GitHub Actions with Direct Workload Identity Federation](docs/google-github-actions-auth-direct-workload-identity-federation.svg)](docs/google-github-actions-auth-direct-workload-identity-federation.svg)
+
+> [!IMPORTANT]
+>
+> To generate OAuth 2.0 access tokens or ID tokens, you _must_ provide a service
+> account email, and the Workload Identity Pool must have
+> `roles/iam.workloadIdentityUser` permissions on the target Google Cloud
+> Service Account. Follow the steps for Workload Identity Federation through a
+> Service Account instead.
+
+<details>
+  <summary>Click here to show detailed instructions for configuring GitHub authentication to Google Cloud via a direct Workload Identity Federation.</summary>
+
+These instructions use the [gcloud][gcloud] command-line tool.
+
+1.  Create a Workload Identity Pool:
+
+    ```sh
+    # TODO: replace ${PROJECT_ID} with your value below.
+
+    gcloud iam workload-identity-pools create "github" \
+      --project="${PROJECT_ID}" \
+      --location="global" \
+      --display-name="GitHub Actions Pool"
+    ```
+
+1.  Get the full ID of the Workload Identity **Pool**:
+
+    ```sh
+    # TODO: replace ${PROJECT_ID} with your value below.
+
+    gcloud iam workload-identity-pools describe "github" \
+      --project="${PROJECT_ID}" \
+      --location="global" \
+      --format="value(name)"
+    ```
+
+    This value should be of the format:
+
+    ```text
+    projects/123456789/locations/global/workloadIdentityPools/github
+    ```
+
+1.  Create a Workload Identity **Provider** in that pool:
+
+    **🛑 CAUTION!** Always add an Attribute Condition to restrict entry into the
+    Workload Identity Pool. You can further restrict access in IAM Bindings, but
+    always add a basic condition that restricts admission into the pool. A good
+    default option is to restrict admission based on your GitHub organization as
+    demonstrated below. Please see the [security
+    considerations][security-considerations] for more details.
+
+    ```sh
+    # TODO: replace ${PROJECT_ID} and ${GITHUB_ORG} with your values below.
+
+    gcloud iam workload-identity-pools providers create-oidc "my-repo" \
+      --project="${PROJECT_ID}" \
+      --location="global" \
+      --workload-identity-pool="github" \
+      --display-name="My GitHub repo Provider" \
+      --attribute-mapping="google.subject=assertion.sub,attribute.actor=assertion.actor,attribute.repository=assertion.repository,attribute.repository_owner=assertion.repository_owner" \
+      --attribute-condition="assertion.repository_owner == '${GITHUB_ORG}'" \
+      --issuer-uri="https://token.actions.githubusercontent.com"
+    ```
+
+    > **❗️ IMPORTANT** You must map any claims in the incoming token to
+    > attributes before you can assert on those attributes in a CEL expression
+    > or IAM policy!
+
+1.  Extract the Workload Identity **Provider** resource name:
+
+    ```sh
+    # TODO: replace ${PROJECT_ID} with your value below.
+
+    gcloud iam workload-identity-pools providers describe "my-repo" \
+      --project="${PROJECT_ID}" \
+      --location="global" \
+      --workload-identity-pool="github" \
+      --format="value(name)"
+    ```
+
+    Use this value as the `workload_identity_provider` value in the GitHub
+    Actions YAML:
+
+    ```yaml
+    - uses: 'step-security/google-github-auth@v2'
+      with:
+        project_id: 'my-project'
+        workload_identity_provider: '...' # "projects/123456789/locations/global/workloadIdentityPools/github/providers/my-repo"
+    ```
+
+    > **❗️ IMPORTANT** The `project_id` input is optional, but may be required
+    > by downstream authentication systems such as the `gcloud` CLI.
+    > Unfortunately we cannot extract the project ID from the Workload Identity
+    > Provider, since it requires the project _number_.
+    >
+    > It is technically possible to convert a project _number_ into a project
+    > _ID_, but it requires permissions to call Cloud Resource Manager, and we
+    > cannot guarantee that the Workload Identity Pool has those permissions.
+
+1.  As needed, allow authentications from the Workload Identity Pool to Google
+    Cloud resources. These can be any Google Cloud resources that support
+    federated ID tokens, and it can be done after the GitHub Action is
+    configured.
+
+    The following example shows granting access from a GitHub Action in a
+    specific repository a secret in Google Secret Manager.
+
+    ```sh
+    # TODO: replace ${PROJECT_ID}, ${WORKLOAD_IDENTITY_POOL_ID}, and ${REPO}
+    # with your values below.
+    #
+    # ${REPO} is the full repo name including the parent GitHub organization,
+    # such as "my-org/my-repo".
+    #
+    # ${WORKLOAD_IDENTITY_POOL_ID} is the full pool id, such as
+    # "projects/123456789/locations/global/workloadIdentityPools/github".
+
+    gcloud secrets add-iam-policy-binding "my-secret" \
+      --project="${PROJECT_ID}" \
+      --role="roles/secretmanager.secretAccessor" \
+      --member="principalSet://iam.googleapis.com/${WORKLOAD_IDENTITY_POOL_ID}/attribute.repository/${REPO}"
+    ```
+
+    Review the [GitHub documentation][github-oidc] for a complete list of
+    options and values. This GitHub repository does not seek to enumerate every
+    possible combination.
+</details>
+
+
+<a name="indirect-wif" id="indirect-wif"></a>
+
+### Workload Identity Federation through a Service Account
+
+In this setup, the Workload Identity Pool impersonates a Google Cloud Service
+Account which has IAM permissions on Google Cloud resources. This exchanges the
+GitHub Actions OIDC token with a Google Cloud OAuth 2.0 access token by granting
+GitHub Actions permissions to mint tokens for the given Service Account. Thus
+GitHub Actions inherits that Service Account's permissions by proxy.
+
+[![Authenticate to Google Cloud from GitHub Actions with Workload Identity Federation through a Service Account](docs/google-github-actions-auth-workload-identity-federation-through-service-account.svg)](docs/google-github-actions-auth-workload-identity-federation-through-service-account.svg)
+
+<details>
+  <summary>Click here to show detailed instructions for configuring GitHub authentication to Google Cloud via a Workload Identity Federation through a Service Account.</summary>
+
+These instructions use the [gcloud][gcloud] command-line tool.
+
+1.  (Optional) Create a Google Cloud Service Account. If you already have a
+    Service Account, take note of the email address and skip this step.
+
+    ```sh
+    # TODO: replace ${PROJECT_ID} with your value below.
+
+    gcloud iam service-accounts create "my-service-account" \
+      --project "${PROJECT_ID}"
+    ```
+
+1.  Create a Workload Identity Pool:
+
+    ```sh
+    # TODO: replace ${PROJECT_ID} with your value below.
+
+    gcloud iam workload-identity-pools create "github" \
+      --project="${PROJECT_ID}" \
+      --location="global" \
+      --display-name="GitHub Actions Pool"
+    ```
+
+1.  Get the full ID of the Workload Identity **Pool**:
+
+    ```sh
+    # TODO: replace ${PROJECT_ID} with your value below.
+
+    gcloud iam workload-identity-pools describe "github" \
+      --project="${PROJECT_ID}" \
+      --location="global" \
+      --format="value(name)"
+    ```
+
+    This value should be of the format:
+
+    ```text
+    projects/123456789/locations/global/workloadIdentityPools/github
+    ```
+
+1.  Create a Workload Identity **Provider** in that pool:
+
+    **🛑 CAUTION!** Always add an Attribute Condition to restrict entry into the
+    Workload Identity Pool. You can further restrict access in IAM Bindings, but
+    always add a basic condition that restricts admission into the pool. A good
+    default option is to restrict admission based on your GitHub organization as
+    demonstrated below. Please see the [security
+    considerations][security-considerations] for more details.
+
+    ```sh
+    # TODO: replace ${PROJECT_ID} and ${GITHUB_ORG} with your values below.
+
+    gcloud iam workload-identity-pools providers create-oidc "my-repo" \
+      --project="${PROJECT_ID}" \
+      --location="global" \
+      --workload-identity-pool="github" \
+      --display-name="My GitHub repo Provider" \
+      --attribute-mapping="google.subject=assertion.sub,attribute.actor=assertion.actor,attribute.repository=assertion.repository,attribute.repository_owner=assertion.repository_owner" \
+      --attribute-condition="assertion.repository_owner == '${GITHUB_ORG}'" \
+      --issuer-uri="https://token.actions.githubusercontent.com"
+    ```
+
+    > **❗️ IMPORTANT** You must map any claims in the incoming token to
+    > attributes before you can assert on those attributes in a CEL expression
+    > or IAM policy!
+
+1.  Allow authentications from the Workload Identity Pool to your Google Cloud
+    Service Account.
+
+    ```sh
+    # TODO: replace ${PROJECT_ID}, ${WORKLOAD_IDENTITY_POOL_ID}, and ${REPO}
+    # with your values below.
+    #
+    # ${REPO} is the full repo name including the parent GitHub organization,
+    # such as "my-org/my-repo".
+    #
+    # ${WORKLOAD_IDENTITY_POOL_ID} is the full pool id, such as
+    # "projects/123456789/locations/global/workloadIdentityPools/github".
+
+    gcloud iam service-accounts add-iam-policy-binding "my-service-account@${PROJECT_ID}.iam.gserviceaccount.com" \
+      --project="${PROJECT_ID}" \
+      --role="roles/iam.workloadIdentityUser" \
+      --member="principalSet://iam.googleapis.com/${WORKLOAD_IDENTITY_POOL_ID}/attribute.repository/${REPO}"
+    ```
+
+    Review the [GitHub documentation][github-oidc] for a complete list of
+    options and values. This GitHub repository does not seek to enumerate every
+    possible combination.
+
+1.  Extract the Workload Identity **Provider** resource name:
+
+    ```sh
+    # TODO: replace ${PROJECT_ID} with your value below.
+
+    gcloud iam workload-identity-pools providers describe "my-repo" \
+      --project="${PROJECT_ID}" \
+      --location="global" \
+      --workload-identity-pool="github" \
+      --format="value(name)"
+    ```
+
+    Use this value as the `workload_identity_provider` value in the GitHub
+    Actions YAML:
+
+    ```yaml
+    - uses: 'step-security/google-github-auth@v2'
+      with:
+        service_account: '...' # my-service-account@my-project.iam.gserviceaccount.com
+        workload_identity_provider: '...' # "projects/123456789/locations/global/workloadIdentityPools/github/providers/my-repo"
+    ```
+
+1.  As needed, grant the Google Cloud Service Account permissions to access
+    Google Cloud resources. This step varies by use case. The following example
+    shows granting access to a secret in Google Secret Manager.
+
+    ```sh
+    # TODO: replace ${PROJECT_ID} with your value below.
+
+    gcloud secrets add-iam-policy-binding "my-secret" \
+      --project="${PROJECT_ID}" \
+      --role="roles/secretmanager.secretAccessor" \
+      --member="serviceAccount:my-service-account@${PROJECT_ID}.iam.gserviceaccount.com"
+    ```
+</details>
+
+[dwd]: https://developers.google.com/admin-sdk/directory/v1/guides/delegation
+[gcloud]: https://cloud.google.com/sdk
+[github-oidc]: https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/about-security-hardening-with-openid-connect#understanding-the-oidc-token
+[github-perms]: https://docs.github.com/en/actions/learn-github-actions/workflow-syntax-for-github-actions#permissions
+[map-external]: https://cloud.google.com/iam/docs/access-resources-oidc#impersonate
+[wif]: https://cloud.google.com/iam/docs/workload-identity-federation
+[security-considerations]: docs/SECURITY_CONSIDERATIONS.md

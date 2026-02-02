@@ -7,18 +7,13 @@ on:
         description: "Base branch to create the PR against"
         required: true
         default: "main"
-      script:
-        description: "Specify the build script to run"
-        required: false
-        type: string
-        default: "npm run all"
       mode:
-        description: 'Run mode: cherry-pick or verify'
+        description: "Run mode: cherry-pick or verify"
         required: false
-        default: 'cherry-pick'
+        default: "cherry-pick"
 
   pull_request:
-    types: [opened, synchronize, labeled]
+    types: [labeled, opened, synchronize]
 
 permissions:
   contents: write
@@ -29,11 +24,9 @@ permissions:
 jobs:
   cherry-pick:
     if: github.event_name == 'workflow_dispatch' || contains(fromJson(toJson(github.event.pull_request.labels)).*.name, 'review-required')
-    uses: step-security/reusable-workflows/.github/workflows/auto_cherry_pick.yaml@v1
+    uses: step-security/reusable-workflows/.github/workflows/auto_cherry_pick.yaml@fix_Verify_cherry_pick-Logic
     with:
-      original-owner: "lasith-kg"
-      repo-name: "dispatch-workflow"
-      base_branch: ${{ inputs.base_branch }}
-      script: ${{ inputs.script || 'npm run all' }}
+      original-owner: "google-github-actions"
+      repo-name: "auth"
+      base_branch: ${{ inputs.base_branch || 'main' }}
       mode: ${{ github.event_name == 'pull_request' && 'verify' || inputs.mode }}
-  
