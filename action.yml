@@ -1,54 +1,52 @@
-name: Changesets
-description: A GitHub action to automate releases with Changesets
-runs:
-  using: "node20"
-  main: "dist/index.js"
-inputs:
-  publish:
-    description: "The command to use to build and publish packages"
-    required: false
-  version:
-    description: "The command to update version, edit CHANGELOG, read and delete changesets. Default to `changeset version` if not provided"
-    required: false
-  cwd:
-    description: Sets the cwd for the node process. Default to `process.cwd()`
-    required: false
-  commit:
-    description: |
-      The commit message. Default to `Version Packages`
-    required: false
-  title:
-    description: The pull request title. Default to `Version Packages`
-    required: false
-  setupGitUser:
-    description: Sets up the git user for commits as `"github-actions[bot]"`. Default to `true`
-    required: false
-    default: true
-  createGithubReleases:
-    description: "A boolean value to indicate whether to create Github releases after `publish` or not"
-    required: false
-    default: true
-  commitMode:
-    description: >
-      An enum to specify the commit mode. Use "git-cli" to push changes using the Git CLI,
-      or "github-api" to push changes via the GitHub API. When using "github-api",
-      all commits and tags are signed using GitHub's GPG key and attributed to the user
-      or app who owns the GITHUB_TOKEN.
-    required: false
-    default: "git-cli"
-  branch:
-    description: Sets the branch in which the action will run. Default to `github.ref_name` if not provided
-    required: false
-outputs:
-  published:
-    description: A boolean value to indicate whether a publishing is happened or not
-  publishedPackages:
-    description: >
-      A JSON array to present the published packages. The format is `[{"name": "@xx/xx", "version": "1.2.0"}, {"name": "@xx/xy", "version": "0.8.9"}]`
-  hasChangesets:
-    description: A boolean about whether there were changesets. Useful if you want to create your own publishing functionality.
-  pullRequestNumber:
-    description: The pull request number that was created or updated
+name: 'Dispatch Workflow'
+description: 'A GitHub action to dispatch a remote GitHub workflow and optionally retrieve its information'
 branding:
-  icon: "package"
-  color: "blue"
+  icon: chevrons-right
+  color: black
+inputs:
+  dispatch-method:
+    required: true
+    description: 'The method that will be used for dispatching GitHub workflows: repository_dispatch, workflow_dispatch.'
+  repo:
+    description: 'Repository of the workflow to dispatch.'
+    required: true
+  owner:
+    description: 'Owner of the given repository.'
+    required: true
+  token:
+    description: 'GitHub API token for making API requests.'
+    required: true
+  ref:
+    description: >
+      'If the selected dispatch method is workflow_dispatch, the git reference for the workflow.
+       The reference can be a branch or tag name.'
+    required: false
+  workflow:
+    description: 'If the selected dispatch method is workflow_dispatch, the ID or the workflow file name to dispatch.'
+    required: false
+  event-type:
+    required: false
+    description: 'If the selected dispatch method is repository_dispatch, what event type will be triggered in the repository.'
+  workflow-inputs:
+    description: 'A JSON object that contains extra information that will be provided to the dispatch call.'
+    required: false
+    default: '{}'
+  discover:
+    description: 'A flag to enable the discovery of the Run ID from the dispatched workflow.'
+    required: false
+    default: 'false'
+  starting-delay-ms:
+    description: The delay, in milliseconds, before executing the function for the first time.
+    required: false
+    default: 200
+  max-attempts:
+    description: The maximum number of times to attempt read-only GitHub API requests.
+    required: false
+    default: 5
+  time-multiple:
+    description: The starting-delay-ms is multiplied by the time-multiple to increase the delay between reattempts.
+    required: false
+    default: 2
+runs:
+  using: 'node20'
+  main: 'dist/index.js'

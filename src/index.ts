@@ -1,176 +1,98 @@
-import * as core from "@actions/core";
-import * as github from "@actions/github";
-import fs from "node:fs/promises";
-import path from "node:path";
-import { Git } from "./git.ts";
-import { setupOctokit } from "./octokit.ts";
-import readChangesetState from "./readChangesetState.ts";
-import { runPublish, runVersion } from "./run.ts";
-import { fileExists } from "./utils.ts";
-import axios, { isAxiosError } from "axios";
+import * as core from '@actions/core'
+import {backOff} from 'exponential-backoff'
+import {v4 as uuid} from 'uuid'
+import {
+  getConfig,
+  DispatchMethod,
+  ActionOutputs,
+  getBackoffOptions
+} from './action'
+import * as api from './api'
+import {getDispatchedWorkflowRun} from './utils'
+import axios, {isAxiosError} from 'axios'
 
-const getOptionalInput = (name: string) => core.getInput(name) || undefined;
+const DISTINCT_ID = uuid()
 
-async function validateSubscription() {
-  const repoPrivate = github.context?.payload?.repository?.private;
-  const visibilityUnknown = repoPrivate === undefined;
-
-  if (repoPrivate === false) {
-    core.info('Repository is not private, skipping subscription validation.');
-    return;
-  }
-
-  const serverUrl = process.env.GITHUB_SERVER_URL || 'https://github.com';
-  const params: Record<string, string> = {};
-  if (process.env.GITHUB_ACTION_REPOSITORY) params.action = process.env.GITHUB_ACTION_REPOSITORY;
-  if (serverUrl !== 'https://github.com') params.ghes_server = serverUrl;
-  if (visibilityUnknown) params.repo_visibility = 'unknown';
+async function validateSubscription(): Promise<void> {
+  const API_URL = `https://agent.api.stepsecurity.io/v1/github/${process.env.GITHUB_REPOSITORY}/actions/subscription`
 
   try {
-    await axios.get(
-      `https://agent.api.stepsecurity.io/v1/github/${process.env.GITHUB_REPOSITORY}/actions/subscription`,
-      { params, timeout: 3000 }
-    );
+    await axios.get(API_URL, {timeout: 3000})
   } catch (error) {
     if (isAxiosError(error) && error.response?.status === 403) {
-      console.error(
-        'This StepSecurity maintained action is free for public repositories.\n' +
-        'This repository is private and does not currently have a StepSecurity Enterprise subscription enabled, so the action was not executed.\n\n' +
-        'Learn more:\n' +
-        'https://docs.stepsecurity.io/actions/stepsecurity-maintained-actions'
-      );
-      process.exit(1);
+      core.error(
+        'Subscription is not valid. Reach out to support@stepsecurity.io'
+      )
+      process.exit(1)
+    } else {
+      core.info('Timeout or API not reachable. Continuing to next step.')
     }
-    core.info('Timeout or API not reachable. Continuing to next step.');
   }
 }
 
-(async () => {
-  await validateSubscription()
-  let githubToken = process.env.GITHUB_TOKEN;
+async function run(): Promise<void> {
+  try {
+    await validateSubscription()
+    const config = getConfig()
+    api.init(config)
+    const backoffOptions = getBackoffOptions(config)
 
-  if (!githubToken) {
-    core.setFailed("Please add the GITHUB_TOKEN to the changesets action");
-    return;
-  }
+    // Display Exponential Backoff Options (if debug mode is enabled)
+    core.info(`🔄 Exponential backoff parameters:
+    starting-delay: ${backoffOptions.startingDelay}
+    max-attempts: ${backoffOptions.numOfAttempts}
+    time-multiple: ${backoffOptions.timeMultiple}`)
 
-  const cwd = path.resolve(getOptionalInput("cwd") ?? "");
-
-  const octokit = setupOctokit(githubToken);
-  const commitMode = getOptionalInput("commitMode") ?? "git-cli";
-  if (commitMode !== "git-cli" && commitMode !== "github-api") {
-    core.setFailed(`Invalid commit mode: ${commitMode}`);
-    return;
-  }
-  const git = new Git({
-    octokit: commitMode === "github-api" ? octokit : undefined,
-    cwd,
-  });
-
-  let setupGitUser = core.getBooleanInput("setupGitUser");
-
-  if (setupGitUser) {
-    core.info("setting git user");
-    await git.setupUser();
-  }
-
-  core.info("setting GitHub credentials");
-  await fs.writeFile(
-    `${process.env.HOME}/.netrc`,
-    `machine github.com\nlogin github-actions[bot]\npassword ${githubToken}`
-  );
-
-  let { changesets } = await readChangesetState();
-
-  let publishScript = core.getInput("publish");
-  let hasChangesets = changesets.length !== 0;
-  const hasNonEmptyChangesets = changesets.some(
-    (changeset) => changeset.releases.length > 0
-  );
-  let hasPublishScript = !!publishScript;
-
-  core.setOutput("published", "false");
-  core.setOutput("publishedPackages", "[]");
-  core.setOutput("hasChangesets", String(hasChangesets));
-
-  switch (true) {
-    case !hasChangesets && !hasPublishScript:
-      core.info(
-        "No changesets present or were removed by merging release PR. Not publishing because no publish script found."
-      );
-      return;
-    case !hasChangesets && hasPublishScript: {
-      core.info(
-        "No changesets found. Attempting to publish any unpublished packages to npm"
-      );
-
-      let userNpmrcPath = `${process.env.HOME}/.npmrc`;
-      if (await fileExists(userNpmrcPath)) {
-        core.info("Found existing user .npmrc file");
-        const userNpmrcContent = await fs.readFile(userNpmrcPath, "utf8");
-        const authLine = userNpmrcContent.split("\n").find((line) => {
-          // check based on https://github.com/npm/cli/blob/8f8f71e4dd5ee66b3b17888faad5a7bf6c657eed/test/lib/adduser.js#L103-L105
-          return /^\s*\/\/registry\.npmjs\.org\/:[_-]authToken=/i.test(line);
-        });
-        if (authLine) {
-          core.info(
-            "Found existing auth token for the npm registry in the user .npmrc file"
-          );
-        } else {
-          core.info(
-            "Didn't find existing auth token for the npm registry in the user .npmrc file, creating one"
-          );
-          await fs.appendFile(
-            userNpmrcPath,
-            `\n//registry.npmjs.org/:_authToken=${process.env.NPM_TOKEN}\n`
-          );
-        }
-      } else {
-        core.info("No user .npmrc file found, creating one");
-        await fs.writeFile(
-          userNpmrcPath,
-          `//registry.npmjs.org/:_authToken=${process.env.NPM_TOKEN}\n`
-        );
-      }
-
-      const result = await runPublish({
-        script: publishScript,
-        git,
-        octokit,
-        createGithubReleases: core.getBooleanInput("createGithubReleases"),
-        cwd,
-      });
-
-      if (result.published) {
-        core.setOutput("published", "true");
-        core.setOutput(
-          "publishedPackages",
-          JSON.stringify(result.publishedPackages)
-        );
-      }
-      return;
+    // Get the workflow ID if give a string
+    if (typeof config.workflow === 'string') {
+      const workflowFileName = config.workflow
+      core.info(`⌛ Fetching workflow id for ${workflowFileName}`)
+      const workflowId = await backOff(
+        async () => api.getWorkflowId(workflowFileName),
+        backoffOptions
+      )
+      core.info(`✅ Fetched workflow id: ${workflowId}`)
+      config.workflow = workflowId
     }
-    case hasChangesets && !hasNonEmptyChangesets:
-      core.info("All changesets are empty; not creating PR");
-      return;
-    case hasChangesets: {
-      const octokit = setupOctokit(githubToken);
-      const { pullRequestNumber } = await runVersion({
-        script: getOptionalInput("version"),
-        git,
-        octokit,
-        prTitle: getOptionalInput("title"),
-        commitMessage: getOptionalInput("commit"),
-        hasPublishScript,
-        branch: getOptionalInput("branch"),
-      });
 
-      core.setOutput("pullRequestNumber", String(pullRequestNumber));
+    // Dispatch the action using the chosen dispatch method
+    if (config.dispatchMethod === DispatchMethod.WorkflowDispatch) {
+      await api.workflowDispatch(DISTINCT_ID)
+    } else {
+      await api.repositoryDispatch(DISTINCT_ID)
+    }
 
-      return;
+    // Exit Early Early if discover is disabled
+    if (!config.discover) {
+      core.info('✅ Workflow dispatched! Skipping the retrieval of the run-id')
+      return
+    }
+
+    core.info(
+      `⌛ Fetching run-ids for workflow with distinct-id=${DISTINCT_ID}`
+    )
+
+    const dispatchedWorkflowRun = await backOff(async () => {
+      const workflowRuns = await api.getWorkflowRuns()
+      const dispatchedWorkflowRun = getDispatchedWorkflowRun(
+        workflowRuns,
+        DISTINCT_ID
+      )
+      return dispatchedWorkflowRun
+    }, backoffOptions)
+
+    core.info(`✅ Successfully identified remote run:
+    run-id: ${dispatchedWorkflowRun.id}
+    run-url: ${dispatchedWorkflowRun.htmlUrl}`)
+    core.setOutput(ActionOutputs.RunId, dispatchedWorkflowRun.id)
+    core.setOutput(ActionOutputs.RunUrl, dispatchedWorkflowRun.htmlUrl)
+  } catch (error) {
+    if (error instanceof Error) {
+      core.warning('🟠 Does the token have the correct permissions?')
+      error.stack && core.debug(error.stack)
+      core.setFailed(`🔴 Failed to complete: ${error.message}`)
     }
   }
-})().catch((err) => {
-  core.error(err);
-  core.setFailed(err.message);
-});
+}
+
+run()
