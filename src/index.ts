@@ -1,4 +1,5 @@
 import * as core from '@actions/core'
+import * as github from '@actions/github'
 import {backOff} from 'exponential-backoff'
 import {v4 as uuid} from 'uuid'
 import {
@@ -13,20 +14,60 @@ import axios, {isAxiosError} from 'axios'
 
 const DISTINCT_ID = uuid()
 
-async function validateSubscription(): Promise<void> {
-  const API_URL = `https://agent.api.stepsecurity.io/v1/github/${process.env.GITHUB_REPOSITORY}/actions/subscription`
+async function validateSubscription() {
+  const repoPrivate = github.context?.payload?.repository?.private
+  const visibilityUnknown = repoPrivate === undefined
+
+  core.info(
+    `Starting subscription validation - Repository private: ${repoPrivate}, Visibility unknown: ${visibilityUnknown}`
+  )
+
+  if (repoPrivate === false) {
+    core.info('Repository is public, skipping subscription validation.')
+    return
+  }
+
+  if (repoPrivate === true) {
+    core.info('Repository is private, proceeding with subscription validation.')
+  } else if (visibilityUnknown) {
+    core.info(
+      'Repository visibility is unknown, proceeding with subscription validation.'
+    )
+  }
+
+  const serverUrl = process.env.GITHUB_SERVER_URL || 'https://github.com'
+  const params: Record<string, string> = {}
+  if (process.env.GITHUB_ACTION_REPOSITORY)
+    params.action = process.env.GITHUB_ACTION_REPOSITORY
+  if (serverUrl !== 'https://github.com') params.ghes_server = serverUrl
+  if (visibilityUnknown) params.repo_visibility = 'unknown'
+
+  core.debug(`Validation params: ${JSON.stringify(params)}`)
 
   try {
-    await axios.get(API_URL, {timeout: 3000})
+    core.info('Checking subscription status...')
+    await axios.get(
+      `https://agent.api.stepsecurity.io/v1/github/${process.env.GITHUB_REPOSITORY}/actions/subscription`,
+      {params, timeout: 3000}
+    )
+    core.info('Subscription validation successful.')
   } catch (error) {
     if (isAxiosError(error) && error.response?.status === 403) {
-      core.error(
-        'Subscription is not valid. Reach out to support@stepsecurity.io'
+      core.error('Subscription validation failed: 403 Forbidden')
+      console.error(
+        'This StepSecurity maintained action is free for public repositories.\n' +
+          'This repository is private and does not currently have a StepSecurity Enterprise subscription enabled, so the action was not executed.\n\n' +
+          'Learn more:\n' +
+          'https://docs.stepsecurity.io/actions/stepsecurity-maintained-actions'
       )
       process.exit(1)
-    } else {
-      core.info('Timeout or API not reachable. Continuing to next step.')
     }
+    core.warning(
+      `Subscription validation error: ${
+        error instanceof Error ? error.message : 'Unknown error'
+      }`
+    )
+    core.info('Timeout or API not reachable. Continuing to next step.')
   }
 }
 
