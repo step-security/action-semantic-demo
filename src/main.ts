@@ -51,6 +51,7 @@ import { appendFileSync, existsSync } from 'fs';
 import { relative, join } from 'path';
 import * as core from '@actions/core';
 import axios, { isAxiosError } from 'axios';
+import chalk from 'chalk';
 
 const secretsWarning =
   `If you are specifying input values via GitHub secrets, ensure the secret ` +
@@ -64,6 +65,16 @@ const oidcWarning =
   `run from a fork. For more information, please see https://docs.github.com/en/actions/security-guides/automatic-token-authentication#permissions-for-the-github_token`;
 
 async function validateSubscription() {
+  const actionName = process.env.GITHUB_ACTION_REPOSITORY || 'step-security/google-github-auth';
+
+  // Log maintained action info with formatting
+  core.info('');
+  core.info(chalk.blue('ℹ') + '  ' + chalk.bold('StepSecurity Maintained Action'));
+  core.info('   ' + chalk.cyan(actionName));
+  core.info('   ' + chalk.gray('Free for public repositories'));
+  core.info('   ' + chalk.yellow('https://docs.stepsecurity.io/actions/stepsecurity-maintained-actions'));
+  core.info('');
+
   const repoPrivate = github.context?.payload?.repository?.private;
   const visibilityUnknown = repoPrivate === undefined;
 

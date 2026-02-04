@@ -30,7 +30,8 @@
     "@actions/github": "^6.0.0",
     "@actions/http-client": "^2.2.2",
     "@google-github-actions/actions-utils": "^0.8.7",
-    "axios": "^1.7.4"
+    "axios": "^1.7.4",
+    "chalk": "^4.1.2"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.1.0",
