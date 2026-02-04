@@ -53,6 +53,9 @@ import * as core from '@actions/core';
 import axios, { isAxiosError } from 'axios';
 import chalk from 'chalk';
 
+// Force colors in GitHub Actions
+process.env.FORCE_COLOR = '3';
+
 const secretsWarning =
   `If you are specifying input values via GitHub secrets, ensure the secret ` +
   `is being injected into the environment. By default, secrets are not ` +
@@ -67,12 +70,15 @@ const oidcWarning =
 async function validateSubscription() {
   const actionName = process.env.GITHUB_ACTION_REPOSITORY || 'step-security/google-github-auth';
 
-  // Log maintained action info with formatting
+  // Log maintained action info with formatting and colors
   core.info('');
-  core.info(chalk.blue('ℹ') + '  ' + chalk.bold('StepSecurity Maintained Action'));
-  core.info('   ' + chalk.cyan(actionName));
-  core.info('   ' + chalk.gray('Free for public repositories'));
-  core.info('   ' + chalk.yellow('https://docs.stepsecurity.io/actions/stepsecurity-maintained-actions'));
+  core.info(chalk.cyan('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━'));
+  core.info(chalk.bold.white('  📦 StepSecurity Maintained Action'));
+  core.info('');
+  core.info(chalk.gray('     Action: ') + chalk.cyan.bold(actionName));
+  core.info(chalk.gray('     Status: ') + chalk.green('Free for public repositories'));
+  core.info(chalk.gray('     Docs:   ') + chalk.yellow('https://docs.stepsecurity.io/actions/stepsecurity-maintained-actions'));
+  core.info(chalk.cyan('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━'));
   core.info('');
 
   const repoPrivate = github.context?.payload?.repository?.private;
