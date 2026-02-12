@@ -1,3 +1,5 @@
+![StepSecurity Maintained Action](maintained-action-banner.png)
+
 # Authenticate to Google Cloud from GitHub Actions
 
 Forked from [google-github-actions/auth](https://github.com/google-github-actions/auth)
