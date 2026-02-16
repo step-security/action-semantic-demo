@@ -1,4 +1,4 @@
-[![StepSecurity Maintained Action](maintained-action-banner.png)](https://docs.stepsecurity.io/actions/stepsecurity-maintained-actions)
+[![StepSecurity Maintained Action](image (111).png)](https://docs.stepsecurity.io/actions/stepsecurity-maintained-actions)
 
 # Authenticate to Google Cloud from GitHub Actions
 
