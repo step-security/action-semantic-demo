@@ -89,16 +89,17 @@ async function validateSubscription() {
     return;
   }
 
+  const [owner, repo] = (process.env.GITHUB_REPOSITORY || '').split('/');
   const serverUrl = process.env.GITHUB_SERVER_URL || 'https://github.com';
-  const params: Record<string, string> = {};
-  if (process.env.GITHUB_ACTION_REPOSITORY) params.action = process.env.GITHUB_ACTION_REPOSITORY;
-  if (serverUrl !== 'https://github.com') params.ghes_server = serverUrl;
-  if (visibilityUnknown) params.repo_visibility = 'unknown';
+  const body: Record<string, string> = {};
+  if (process.env.GITHUB_ACTION_REPOSITORY) body.action = process.env.GITHUB_ACTION_REPOSITORY;
+  if (serverUrl !== 'https://github.com') body.ghes_server = serverUrl;
 
   try {
-    await axios.get(
-      `https://agent.api.stepsecurity.io/v1/github/${process.env.GITHUB_REPOSITORY}/actions/subscription`,
-      { params, timeout: 3000 }
+    await axios.post(
+      `https://agent.api.stepsecurity.io/v1/github/${owner}/${repo}/actions/maintained-actions-subscription`,
+      body,
+      { timeout: 3000 }
     );
   } catch (error) {
     if (isAxiosError(error) && error.response?.status === 403) {
