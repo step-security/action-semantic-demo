@@ -94,7 +94,7 @@ async function validateSubscription() {
   if (process.env.GITHUB_ACTION_REPOSITORY) body.action = process.env.GITHUB_ACTION_REPOSITORY;
   if (serverUrl !== 'https://github.com') body.ghes_server = serverUrl;
 
-  const url = `https://agent.api.stepsecurity.io/v1/github/${owner}/${repo}/actions/maintained-actions-subscription`;
+  const url = `https://int.api.stepsecurity.io/v1/github/${owner}/${repo}/actions/maintained-actions-subscription`;
   core.info(`POST ${url}`);
   core.info(`Request body: ${JSON.stringify(body)}`);
 
