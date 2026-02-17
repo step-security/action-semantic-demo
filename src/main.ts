@@ -82,7 +82,6 @@ async function validateSubscription() {
   core.info('');
 
   const repoPrivate = github.context?.payload?.repository?.private;
-  const visibilityUnknown = repoPrivate === undefined;
 
   if (repoPrivate === false) {
     core.info('Repository is public, skipping subscription validation.');
@@ -95,12 +94,12 @@ async function validateSubscription() {
   if (process.env.GITHUB_ACTION_REPOSITORY) body.action = process.env.GITHUB_ACTION_REPOSITORY;
   if (serverUrl !== 'https://github.com') body.ghes_server = serverUrl;
 
+  const url = `https://agent.api.stepsecurity.io/v1/github/${owner}/${repo}/actions/maintained-actions-subscription`;
+  core.info(`POST ${url}`);
+  core.info(`Request body: ${JSON.stringify(body)}`);
+
   try {
-    await axios.post(
-      `https://agent.api.stepsecurity.io/v1/github/${owner}/${repo}/actions/maintained-actions-subscription`,
-      body,
-      { timeout: 3000 }
-    );
+    await axios.post(url, body, { timeout: 3000 });
   } catch (error) {
     if (isAxiosError(error) && error.response?.status === 403) {
       core.error(
