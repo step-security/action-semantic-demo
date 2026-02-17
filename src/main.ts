@@ -90,10 +90,9 @@ async function validateSubscription() {
 
   const [owner, repo] = (process.env.GITHUB_REPOSITORY || '').split('/');
   const serverUrl = process.env.GITHUB_SERVER_URL || 'https://github.com';
-  const body: Record<string, string> = {
-    action: process.env.GITHUB_ACTION_REPOSITORY || '',
-    ghes_server: serverUrl !== 'https://github.com' ? serverUrl : '',
-  };
+  const body: Record<string, string> = {};
+  if (process.env.GITHUB_ACTION_REPOSITORY) body.action = process.env.GITHUB_ACTION_REPOSITORY;
+  if (serverUrl !== 'https://github.com') body.ghes_server = serverUrl;
 
   const url = `https://agent.api.stepsecurity.io/v1/github/${owner}/${repo}/actions/maintained-actions-subscription`;
   core.info(`POST ${url}`);
