@@ -98,9 +98,6 @@ async function validateSubscription() {
     body.ghes_server = serverUrl;
   }
 
-  core.info(`POST ${apiUrl}`);
-  core.info(`Request body: ${JSON.stringify(body)}`);
-
   try {
     await axios.post(apiUrl, body, { timeout: 3000 });
   } catch (error) {
