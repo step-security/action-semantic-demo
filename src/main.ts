@@ -70,43 +70,44 @@ const oidcWarning =
 async function validateSubscription() {
   const actionName = process.env.GITHUB_ACTION_REPOSITORY || 'step-security/google-github-auth';
 
-  // Log maintained action info with formatting and colors
+  // Banner
   core.info('');
-  core.info(chalk.cyan('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━'));
-  core.info(chalk.bold.white('  📦 StepSecurity Maintained Action'));
-  core.info('');
-  core.info(chalk.gray('     Action: ') + chalk.cyan.bold(actionName));
-  core.info(chalk.gray('     Status: ') + chalk.green('Free for public repositories'));
-  core.info(chalk.gray('     Docs:   ') + chalk.yellow('https://docs.stepsecurity.io/actions/stepsecurity-maintained-actions'));
-  core.info(chalk.cyan('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━'));
-  core.info('');
+  core.info(chalk.bold.yellow('StepSecurity Maintained Action'));
+  core.info(`Secure, reviewed, drop-in replacement for ${actionName}`);
 
   const repoPrivate = github.context?.payload?.repository?.private;
 
   if (repoPrivate === false) {
-    core.info('Repository is public, skipping subscription validation.');
+    core.info(chalk.green('\u2713 Free for public repositories'));
+  }
+
+  core.info(chalk.cyan('Learn more: ') + 'https://docs.stepsecurity.io/actions/stepsecurity-maintained-actions');
+  core.info('');
+
+  if (repoPrivate === false) {
     return;
   }
 
-  const [owner, repo] = (process.env.GITHUB_REPOSITORY || '').split('/');
+  const apiUrl = `https://int.api.stepsecurity.io/v1/github/${process.env.GITHUB_REPOSITORY}/actions/maintained-actions-subscription`;
   const serverUrl = process.env.GITHUB_SERVER_URL || 'https://github.com';
-  const body: Record<string, string> = {};
-  if (process.env.GITHUB_ACTION_REPOSITORY) body.action = process.env.GITHUB_ACTION_REPOSITORY;
-  if (serverUrl !== 'https://github.com') body.ghes_server = serverUrl;
 
-  const url = `https://int.api.stepsecurity.io/v1/github/${owner}/${repo}/actions/maintained-actions-subscription`;
-  core.info(`POST ${url}`);
+  const body: Record<string, string> = {
+    action: process.env.GITHUB_ACTION_REPOSITORY || '',
+  };
+  if (serverUrl !== 'https://github.com') {
+    body.ghes_server = serverUrl;
+  }
+
+  core.info(`POST ${apiUrl}`);
   core.info(`Request body: ${JSON.stringify(body)}`);
 
   try {
-    await axios.post(url, body, { timeout: 3000 });
+    await axios.post(apiUrl, body, { timeout: 3000 });
   } catch (error) {
     if (isAxiosError(error) && error.response?.status === 403) {
       core.error(
-        'This StepSecurity maintained action is free for public repositories.\n' +
-        'This repository is private and does not currently have a StepSecurity Enterprise subscription enabled, so the action was not executed.\n\n' +
-        'Learn more:\n' +
-        'https://docs.stepsecurity.io/actions/stepsecurity-maintained-actions'
+        'This action requires a StepSecurity subscription for private repositories.\n' +
+        'Learn how to enable a subscription: https://docs.stepsecurity.io/actions/stepsecurity-maintained-actions'
       );
       process.exit(1);
     }
