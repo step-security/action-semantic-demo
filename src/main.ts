@@ -72,16 +72,16 @@ async function validateSubscription() {
 
   // Banner
   core.info('');
-  core.info(chalk.bold.yellow('StepSecurity Maintained Action'));
+  core.info('\u001b[1;33mStepSecurity Maintained Action\u001b[0m');
   core.info(`Secure, reviewed, drop-in replacement for ${actionName}`);
 
   const repoPrivate = github.context?.payload?.repository?.private;
 
   if (repoPrivate === false) {
-    core.info(chalk.green('\u2713 Free for public repositories'));
+    core.info('\u001b[32m\u2713 Free for public repositories\u001b[0m');
   }
 
-  core.info(chalk.cyan('Learn more: ') + 'https://docs.stepsecurity.io/actions/stepsecurity-maintained-actions');
+  core.info('\u001b[36mLearn more:\u001b[0m https://docs.stepsecurity.io/actions/stepsecurity-maintained-actions');
   core.info('');
 
   if (repoPrivate === false) {
