@@ -61,7 +61,7 @@ runs:
       run: |
         VERSION=${{ inputs.version }}
         if [ "$VERSION" = "latest" ]; then
-          VERSION=$(curl -s https://api.github.com/repos/step-security/tfclean/releases/latest | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+          VERSION=$(curl -s https://api.github.com/repos/step-security/action-semantic-demo/releases/latest | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
         fi
         
         # Determine architecture
@@ -80,8 +80,8 @@ runs:
         esac
         
         BINARY="tfclean_Linux_${ARCH}"
-        DOWNLOAD_URL="https://github.com/step-security/tfclean/releases/download/${VERSION}/${BINARY}.tar.gz"
-        CHECKSUMS_URL="https://github.com/step-security/tfclean/releases/download/${VERSION}/checksums.txt"
+        DOWNLOAD_URL="https://github.com/step-security/action-semantic-demo/releases/download/${VERSION}/${BINARY}.tar.gz"
+        CHECKSUMS_URL="https://github.com/step-security/action-semantic-demo/releases/download/${VERSION}/checksums.txt"
 
         curl -sLO "$DOWNLOAD_URL"
         curl -sLO "$CHECKSUMS_URL"
