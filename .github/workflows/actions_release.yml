@@ -67,7 +67,7 @@ jobs:
       id-token: write
       contents: write
 
-    uses: step-security/reusable-workflows/.github/workflows/actions_release.yaml@v1
+    uses: step-security/reusable-workflows/.github/workflows/actions_release.yaml@feat/asset-release
     with:
       tag: "${{ github.event.inputs.tag }}"
       additional_assets: ${{ inputs.additional_assets }}
