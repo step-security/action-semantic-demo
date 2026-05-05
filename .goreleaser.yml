@@ -1,0 +1,51 @@
+version: 2
+
+project_name: tfclean
+env:
+  - GO111MODULE=on
+before:
+  hooks:
+    - go mod tidy
+builds:
+  - main: ./cmd/tfclean
+    binary: tfclean
+    ldflags:
+      - -s -w
+      - -X github.com/step-security/tfclean.Version={{.Version}}
+      - -X github.com/step-security/tfclean.Revision={{.ShortCommit}}
+      - -X github.com/step-security/tfclean/cmd/tfclean.Version={{.Version}}
+      - -X github.com/step-security/tfclean/cmd/tfclean.Revision={{.ShortCommit}}
+    env:
+      - CGO_ENABLED=0
+    ignore:
+      - goos: windows
+        goarch: "386"
+      - goos: darwin
+        goarch: "386"
+      - goos: linux
+        goarch: "386"
+      - goos: linux
+        goarch: arm
+        goarm: "7"
+archives:
+  - id: build
+    name_template: >-
+      {{ .ProjectName }}_
+      {{- title .Os }}_
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else if eq .Arch "386" }}i386
+      {{- else }}{{ .Arch }}{{ end }}
+    files:
+      - README.md
+release:
+  prerelease: auto
+checksum:
+  name_template: 'checksums.txt'
+snapshot:
+  version_template: "{{ .Tag }}-next"
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
