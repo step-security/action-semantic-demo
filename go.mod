@@ -1,6 +1,6 @@
 module github.com/step-security/tfclean
 
-go 1.24.0
+go 1.25
 
 toolchain go1.26.0
 
@@ -8,7 +8,7 @@ require (
 	github.com/alecthomas/kong v1.13.0
 	github.com/fujiwara/tfstate-lookup v1.10.0
 	github.com/hashicorp/hcl/v2 v2.24.0
-	github.com/zclconf/go-cty v1.17.0
+	github.com/zclconf/go-cty v1.18.1
 )
 
 require (
