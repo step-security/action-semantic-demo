@@ -6,68 +6,17 @@ on:
       tag:
         description: "Tag for the release"
         required: true
-      additional_assets:
-        description: "Include additional binary assets in the release"
-        type: boolean
-        default: true
 
 permissions:
   contents: read
 
 jobs:
-  assets:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    steps:
-      - name: Harden the runner (Audit all outbound calls)
-        uses: step-security/harden-runner@20cf305ff2072d973412fa9b1e3a4f227bda3c76 # v2.14.0
-        with:
-          egress-policy: audit
-
-      - name: Check out source code
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
-        with:
-          fetch-depth: 0
-
-      - name: Set up Go
-        uses: actions/setup-go@4dc6199c7b1a012772edbd06daecab0f50c9053c # v6.1.0
-        with:
-          go-version-file: go.mod
-          cache: true
-
-      - name: Create local tag for GoReleaser
-        run: git tag "${{ github.event.inputs.tag }}"
-
-      - name: Build assets with GoReleaser
-        uses: goreleaser/goreleaser-action@e435ccd777264be153ace6237001ef4d979d3a7a # v6.4.0
-        with:
-          distribution: goreleaser
-          version: latest
-          args: release --clean --skip=publish
-        env:
-          GORELEASER_CURRENT_TAG: ${{ github.event.inputs.tag }}
-
-      - name: Prepare release assets
-        run: |
-          mkdir -p upload-assets
-          cp dist/tfclean_*.tar.gz upload-assets/
-          cp dist/checksums.txt upload-assets/
-
-      - name: Upload assets as workflow artifact
-        uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08 # v4.6.0
-        with:
-          name: additional-release-assets
-          path: upload-assets/
-
   release:
-    needs: assets
     permissions:
       actions: read
       id-token: write
       contents: write
 
-    uses: step-security/reusable-workflows/.github/workflows/actions_release.yaml@feat/asset-release
+    uses: step-security/reusable-workflows/.github/workflows/actions_release.yaml@v1
     with:
       tag: "${{ github.event.inputs.tag }}"
-      additional_assets: ${{ inputs.additional_assets }}
