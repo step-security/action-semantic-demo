@@ -1,6 +1,6 @@
 module github.com/step-security/tfclean
 
-go 1.24.0
+go 1.25
 
 toolchain go1.26.0
 
@@ -8,7 +8,7 @@ require (
 	github.com/alecthomas/kong v1.13.0
 	github.com/fujiwara/tfstate-lookup v1.10.0
 	github.com/hashicorp/hcl/v2 v2.24.0
-	github.com/zclconf/go-cty v1.17.0
+	github.com/zclconf/go-cty v1.19.0
 )
 
 require (
@@ -37,6 +37,7 @@ require (
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/internal/resourcemapping v0.54.0 // indirect
 	github.com/agext/levenshtein v1.2.1 // indirect
 	github.com/apparentlymart/go-textseg/v15 v15.0.0 // indirect
+	github.com/apparentlymart/go-textseg/v17 v17.0.1 // indirect
 	github.com/aws/aws-sdk-go-v2 v1.41.1 // indirect
 	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.7.4 // indirect
 	github.com/aws/aws-sdk-go-v2/config v1.32.7 // indirect
