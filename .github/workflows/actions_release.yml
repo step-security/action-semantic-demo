@@ -17,6 +17,6 @@ jobs:
       id-token: write
       contents: write
 
-    uses: step-security/reusable-workflows/.github/workflows/actions_release.yaml@feat/asset-release
+    uses: step-security/reusable-workflows/.github/workflows/actions_release.yaml@fix/tag-validation-updated
     with:
       tag: "${{ github.event.inputs.tag }}"
