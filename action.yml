@@ -3,6 +3,7 @@ description: Actions for working with mise runtime manager
 branding:
   icon: arrow-down-circle
   color: purple
+
 inputs:
   version:
     required: false
